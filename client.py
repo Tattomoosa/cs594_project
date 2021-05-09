@@ -47,7 +47,7 @@ def run_client():
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             sock.connect(SERVER_ADDRESS)
             data = input(' > ')
-            print(f'sending {data}')
+            print(f'Sending: {data}')
 
             # quit if requested
             if data in QUIT_CMDS:
@@ -55,10 +55,12 @@ def run_client():
 
             sock.sendall(f'[{username}] {data}'.encode())
 
-            received = str(sock.recv(1024), 'utf-8')
+            received = sock.recv(1024)
+            # while received := sock.recv(1024):
+                # print(f'Received: {received.decode()}')
+            print(f'Received: {received.decode()}')
 
             print(f'Sent: {data}')
-            print(f'Received: {received}')
 
             sock.close()
 
