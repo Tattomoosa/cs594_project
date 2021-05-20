@@ -71,14 +71,16 @@ RID = 0
 
 def input_check(input):
 
-    # This is kinda dirty but adding blank space to string so it can be split with single
     if input[0:1] == '/':
+        # This is kinda dirty but adding blank space to string so it can be split with single
         input+=" "
         command, msg = input.split(' ',1)
-        
-        print(COMMANDS[command](command, msg))
         payload = {}
-        jsonobject = json.dumps(payload)
+        try:
+            payload = COMMANDS[command](command, msg)
+        except:
+            print("Bad Command")
+        jsonobject = json.dumps(payload, indent = 2)
         print(jsonobject)
     else:
         payload = message(input)
@@ -87,55 +89,55 @@ def input_check(input):
 
 def login(command, name=''):
     payload = { 
-        'op': 'LOGIN',
-        'username': name,
+        'op':'LOGIN',
+        'username':name,
         }
     return payload
 
 def list_rooms(command, msg=''):
-    payload = { 
+    payload = {
         'op': 'LIST_ROOMS',
         }
     return payload
 
 def list_users(command, msg=''):
     payload = { 
-        'op': 'LIST_USERS',
+        'op':'LIST_USERS',
         }
     return payload
 
 def join_room(command, room=''):
     payload = { 
-        'op': 'JOIN_ROOM',
-        'user': UUID,
-        'room': RID,
-        'new': 1,
+        'op':'JOIN_ROOM',
+        'user':UUID,
+        'room':RID,
+        'new':1,
         }
     return payload
     
 def leave_room(command, msg=''):
     payload = { 
-        'op': 'LEAVE_ROOM',
-        'room': RID
+        'op':'LEAVE_ROOM',
+        'room':RID
         }
     return payload
     
 def message(command, msg=''):
     payload = { 
-        'op': 'MESSAGE',
-        'user': UUID,
-        'room': RID,
-        'msg': message,
+        'op':'MESSAGE',
+        'user':UUID,
+        'room':RID,
+        'msg':message,
         }
     return payload
 
 COMMANDS = {    
-    '/login': login, 
-    '/rooms': list_rooms, 
-    '/users': list_users, 
-    '/join': join_room, 
-    '/leave': leave_room, 
-    '/message': message,
+    '/login':login, 
+    '/rooms':list_rooms, 
+    '/users':list_users, 
+    '/join':join_room, 
+    '/leave':leave_room, 
+    '/message':message,
     }
 
 
