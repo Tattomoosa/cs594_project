@@ -2,10 +2,12 @@
 
 import socket
 import sys
+import json
 
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8000
 SERVER_ADDRESS = 'localhost', PORT
 ROOM_NAME = 'default'
+
 
 '''
 message examples
@@ -64,5 +66,74 @@ def run_client():
 
             sock.close()
 
+UUID = 0
+RID = 0
+
+def input_check(input):
+
+    test = input.split()
+    # This is kinda dirty but adding blank space to string so it can be split with single
+    input+=" "
+    command, msg = input.split(' ',1)
+    
+    print(COMMANDS[command](command, msg))
+    payload = {}
+    return input
+
+def login(command, name):
+    payload = { 
+        'op': 'LOGIN',
+        'username': name
+        }
+    return payload
+
+def list_rooms(command, msg):
+    payload = { 
+        'op': 'LIST_ROOMS',
+        }
+    return payload
+
+def list_users(command, msg):
+    payload = { 
+        'op': 'LIST_USERS',
+        }
+    return payload
+
+def join_room(command, room):
+    payload = { 
+        'op': 'JOIN_ROOM',
+        'user': UUID,
+        'room': RID,
+        'new': 1,
+        }
+    return payload
+    
+def leave_room(command, msg):
+    payload = { 
+        'op': 'LEAVE_ROOM',
+        'room': RID
+        }
+    return payload
+    
+def message(command, msg):
+    payload = { 
+        'op': 'MESSAGE',
+        'user': UUID,
+        'room': RID,
+        'msg': message,
+        }
+    return payload
+
+COMMANDS = {    
+    '/login': login, 
+    '/rooms': list_rooms, 
+    '/users': list_users, 
+    '/join': join_room, 
+    '/leave': leave_room, 
+    '/message': message,
+    }
+
+
 if __name__ == '__main__':
+    #input_check(input())
     run_client()
