@@ -71,35 +71,40 @@ RID = 0
 
 def input_check(input):
 
-    test = input.split()
     # This is kinda dirty but adding blank space to string so it can be split with single
-    input+=" "
-    command, msg = input.split(' ',1)
+    if input[0:1] == '/':
+        input+=" "
+        command, msg = input.split(' ',1)
+        
+        print(COMMANDS[command](command, msg))
+        payload = {}
+        jsonobject = json.dumps(payload)
+        print(jsonobject)
+    else:
+        payload = message(input)
     
-    print(COMMANDS[command](command, msg))
-    payload = {}
-    return input
+    return payload
 
-def login(command, name):
+def login(command, name=''):
     payload = { 
         'op': 'LOGIN',
-        'username': name
+        'username': name,
         }
     return payload
 
-def list_rooms(command, msg):
+def list_rooms(command, msg=''):
     payload = { 
         'op': 'LIST_ROOMS',
         }
     return payload
 
-def list_users(command, msg):
+def list_users(command, msg=''):
     payload = { 
         'op': 'LIST_USERS',
         }
     return payload
 
-def join_room(command, room):
+def join_room(command, room=''):
     payload = { 
         'op': 'JOIN_ROOM',
         'user': UUID,
@@ -108,14 +113,14 @@ def join_room(command, room):
         }
     return payload
     
-def leave_room(command, msg):
+def leave_room(command, msg=''):
     payload = { 
         'op': 'LEAVE_ROOM',
         'room': RID
         }
     return payload
     
-def message(command, msg):
+def message(command, msg=''):
     payload = { 
         'op': 'MESSAGE',
         'user': UUID,
@@ -135,5 +140,6 @@ COMMANDS = {
 
 
 if __name__ == '__main__':
-    #input_check(input())
-    run_client()
+    input_check(input())
+    #run_client()
+    
