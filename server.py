@@ -26,11 +26,13 @@ class IrcRequestHandler(socketserver.BaseRequestHandler):
 
     def handle(self):
         print('handle called, pid: ', os.getpid())
-        self.data = self.request.recv(1024).strip()
-        message = f"{self.client_address[0]} -- {self.data.decode()}"
-        print(f'message is "{message}"')
-        # server.close_request(self.request)
-        self.request.sendall(message.encode())
+        while data:= self.request.recv(1024):
+            data = data.strip()
+            # self.data = self.request.recv(1024).strip()
+            message = f"{self.client_address[0]} -- {data.decode()}"
+            print(f'message is "{message}"')
+            # server.close_request(self.request)
+            self.request.sendall(message.encode())
 
 
 if __name__ == '__main__':
