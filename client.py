@@ -4,62 +4,48 @@ import socket
 import sys
 import json
 import urwid
-from typing import Dict, Tuple
+from threading import Thread
 
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8000
 SERVER_ADDRESS = 'localhost', PORT
 ROOM_NAME = 'default'
 
-
-'''
-message examples
-
-Keep alive
-{
-    type: KEEP_ALIVE,
-}
-
-Send message
-{
-    type: CHATMSG,
-    roomName: str,
-    userName: str
-
-}
-
-Join room
-{
-    type: JOINROOM,
-    roomName: str,
-    userName: str,
-}
-
-List rooms
-{
-    type: LISTROOM
-}
-'''
-
 username = 'test user'
 data = ''
 QUIT_CMDS = ['/quit', '/exit']
+
+def listen_on_socket(sockt, printfn):
+    while True:
+        data = sockt.recv(1024)
+        if not data:
+            printfn('NO DATA RECEIVED - KILLING THREAD')
+            # return
+        printfn(data.decode())
 
 class App(urwid.Pile):
 
     def __init__(self):
         self.chat_messages = [urwid.Text('item0'), urwid.Text('item1')]
-        self.chat_list_walker = urwid.SimpleFocusListWalker(self.chat_messages)
-        self.text_widget = urwid.ListBox(self.chat_list_walker)
+        chat_list_walker = urwid.SimpleFocusListWalker(self.chat_messages)
+        self.text_widget = urwid.ListBox(chat_list_walker)
         self.edit_widget = urwid.Edit(' > ')
         self.edit_box = urwid.LineBox(urwid.Filler(self.edit_widget))
-        # self.root_widget = urwid.Pile([text_widget, (3, edit_widget)], 1)
         super(App, self).__init__([self.text_widget, (3, self.edit_box)], 1)
 
+        self.socket = socket.socket(socket.AF_INET)
+        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.socket.connect(SERVER_ADDRESS)
+        self.socket_thread = Thread(
+            target=listen_on_socket,
+            args=(self.socket, self.printfn)
+        )
+        self.socket_thread.start()
 
     def keypress(self, size, key):
         if key == 'enter':
             edit_text = self.edit_widget.get_edit_text()
             payload = input_check(edit_text, self.printfn)
+            self.socket.sendall(json.dumps(payload).encode())
             # send payload to server here
             # self.printfn(edit_text)
             self.edit_widget.edit_text = ''
@@ -94,7 +80,6 @@ def run_client():
             # while received := sock.recv(1024):
                 # print(f'Received: {received.decode()}')
             print(f'Received: {received.decode()}')
-
             print(f'Sent: {data}')
 
             sock.close()
@@ -110,7 +95,7 @@ def input_check(input, printfn):
         command, msg = input.split(' ',1)
         payload = {}
         try:
-            payload, msg = COMMANDS[command](command, msg)
+            payload, msg = COMMANDS[command](msg)
             if msg is not None:
                 printfn(msg)
         except:
@@ -118,30 +103,31 @@ def input_check(input, printfn):
         jsonobject = json.dumps(payload, indent = 2)
         printfn(jsonobject)
     else:
-        payload = message(input)
+        payload, _ = message(input)
     
+    printfn(f'PAYLOAD IS {payload}')
     return payload
 
-def login(command, name=''):
+def login(name=''):
     payload = { 
         'op':'LOGIN',
         'username':name,
         }
     return (payload, f'Attempting to log in as {name}...')
 
-def list_rooms(command, _=''):
+def list_rooms(_=''):
     payload = {
         'op': 'LIST_ROOMS',
         }
     return (payload, None)
 
-def list_users(command, _=''):
+def list_users(_=''):
     payload = { 
         'op':'LIST_USERS',
         }
     return (payload, None)
 
-def join_room(command, room=''):
+def join_room(room=''):
     payload = { 
         'op':'JOIN_ROOM',
         'user':UUID,
@@ -150,19 +136,19 @@ def join_room(command, room=''):
         }
     return (payload, None)
     
-def leave_room(command, msg=''):
+def leave_room(msg=''):
     payload = { 
         'op':'LEAVE_ROOM',
         'room':RID
         }
     return (payload, None)
     
-def message(command, msg=''):
+def message(msg=''):
     payload = { 
-        'op':'MESSAGE',
-        'user':UUID,
-        'room':RID,
-        'msg':message,
+        'op': 'MESSAGE',
+        'user': UUID,
+        'room': RID,
+        'msg': msg,
         }
     return (payload, None)
 
