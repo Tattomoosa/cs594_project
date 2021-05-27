@@ -43,15 +43,30 @@ username = 'test user'
 data = ''
 QUIT_CMDS = ['/quit', '/exit']
 
-def run_client():
-    text_widget = urwid.ListBox(urwid.SimpleFocusListWalker([urwid.Text('item0'), urwid.Text('item1')]))
-    edit_widget = urwid.LineBox(urwid.Filler(urwid.Edit(' > ')))
-    root_widget = urwid.Pile([text_widget, (3, edit_widget)], 1)
-    # root_widget = urwid.Pile([edit_widget])
+class App(urwid.Pile):
 
-    loop = urwid.MainLoop(root_widget)
-    # loop = urwid.MainLoop(edit_widget)
+    def __init__(self):
+        self.chat_messages = [urwid.Text('item0'), urwid.Text('item1')]
+        self.text_widget = urwid.ListBox(urwid.SimpleFocusListWalker(self.chat_messages))
+        self.edit_widget = urwid.Edit(' > ')
+        self.edit_box = urwid.LineBox(urwid.Filler(self.edit_widget))
+        # self.root_widget = urwid.Pile([text_widget, (3, edit_widget)], 1)
+        super(App, self).__init__([self.text_widget, (3, self.edit_box)], 1)
+
+
+    def keypress(self, size, key):
+        if key == 'enter':
+            edit_text = self.edit_widget.get_edit_text()
+            self.chat_messages.append(urwid.Text(edit_text))
+            self.edit_widget.edit_text = ''
+        else:
+            super(App, self).keypress(size, key)
+
+def run_client():
+    app = App()
+    loop = urwid.MainLoop(app)
     loop.run()
+
     return
 
     username = input('username:')
