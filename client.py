@@ -1,8 +1,9 @@
-#! /usr/bin/env python3
+#! /usr/bin/env python
 
 import socket
 import sys
 import json
+import urwid
 
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8000
 SERVER_ADDRESS = 'localhost', PORT
@@ -43,6 +44,16 @@ data = ''
 QUIT_CMDS = ['/quit', '/exit']
 
 def run_client():
+    text_widget = urwid.ListBox(urwid.SimpleFocusListWalker([urwid.Text('item0'), urwid.Text('item1')]))
+    edit_widget = urwid.LineBox(urwid.Filler(urwid.Edit(' > ')))
+    root_widget = urwid.Pile([text_widget, (3, edit_widget)], 1)
+    # root_widget = urwid.Pile([edit_widget])
+
+    loop = urwid.MainLoop(root_widget)
+    # loop = urwid.MainLoop(edit_widget)
+    loop.run()
+    return
+
     username = input('username:')
     # event loop
     while True:
@@ -142,6 +153,6 @@ COMMANDS = {
 
 
 if __name__ == '__main__':
-    input_check(input())
-    #run_client()
+    # input_check(input())
+    run_client()
     
