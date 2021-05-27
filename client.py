@@ -18,7 +18,7 @@ QUIT_CMDS = ['/quit', '/exit']
 
 def listen_on_socket(sockt, printfn):
     while True:
-        sleep(.1)
+        sleep(1)
         printfn(str(datetime.now()))
 
         # data = sockt.recv(1024)
@@ -63,6 +63,7 @@ class App(urwid.Pile):
         self.text_widget.body.append(new_text)
         self.text_widget.set_focus_valign('bottom')
         self.text_widget.set_focus(len(self.text_widget.body) - 1)
+        self.loop.draw_screen()
 
 def run_client():
     app = App()
