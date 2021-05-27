@@ -8,6 +8,7 @@ import json
 import urwid
 from threading import Thread
 
+WELCOME_MSG = "Welcome to IRC!"
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8000
 SERVER_ADDRESS = 'localhost', PORT
 ROOM_NAME = 'default'
@@ -17,18 +18,19 @@ data = ''
 QUIT_CMDS = ['/quit', '/exit']
 
 def listen_on_socket(sockt, printfn):
+    sockt.settimeout(1)
     while True:
-        sleep(1)
-        printfn(str(datetime.now()))
-
-        # data = sockt.recv(1024)
-        # if data:
-        #     printfn(data.decode())
+        try:
+            data = sockt.recv(1024)
+            if data:
+                printfn(data.decode())
+        except:
+            printfn('listening...')
 
 class App(urwid.Pile):
 
     def __init__(self):
-        self.chat_messages = [urwid.Text('item0'), urwid.Text('item1')]
+        self.chat_messages = [urwid.Text(WELCOME_MSG)]
         chat_list_walker = urwid.SimpleFocusListWalker(self.chat_messages)
         self.text_widget = urwid.ListBox(chat_list_walker)
         self.edit_widget = urwid.Edit(' > ')
@@ -36,9 +38,7 @@ class App(urwid.Pile):
         super(App, self).__init__([self.text_widget, (3, self.edit_box)], 1)
 
         self.socket = socket.socket(socket.AF_INET)
-        # self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.socket.connect(SERVER_ADDRESS)
-        self.socket.settimeout(.1)
 
         self.loop = urwid.MainLoop(self)
         self.socket_thread = Thread(
@@ -51,9 +51,11 @@ class App(urwid.Pile):
         if key == 'enter':
             edit_text = self.edit_widget.get_edit_text()
             payload = input_check(edit_text, self.printfn)
-            self.socket.sendall(json.dumps(payload).encode())
             # send payload to server here
-            # self.printfn(edit_text)
+            self.printfn('SENDING')
+            # THIS FAILS ON MESSAGE 2:
+            self.socket.sendall(json.dumps(payload).encode())
+            self.printfn('SENT')
             self.edit_widget.edit_text = ''
         else:
             super(App, self).keypress(size, key)
@@ -68,30 +70,7 @@ class App(urwid.Pile):
 def run_client():
     app = App()
     app.loop.run()
-
     return
-
-    username = input('username:')
-    # event loop
-    while True:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-            sock.connect(SERVER_ADDRESS)
-            data = input(' > ')
-            print(f'Sending: {data}')
-
-            # quit if requested
-            if data in QUIT_CMDS:
-                return
-
-            sock.sendall(f'[{username}] {data}'.encode())
-
-            received = sock.recv(1024)
-            # while received := sock.recv(1024):
-                # print(f'Received: {received.decode()}')
-            print(f'Received: {received.decode()}')
-            print(f'Sent: {data}')
-
-            sock.close()
 
 UUID = 0
 RID = 0
@@ -167,6 +146,17 @@ def exit_app(_=''):
     #raise urwid.ExitMainLoop("NOT WORKING")
     # exit()
 
+HELP_MSG = '''COMMANDS
+
+Commands are prefixed with '/', which must be the first character of the input text.
+
+/login [username] :
+/rooms
+'''
+
+def help_cmd(_=''):
+    return (None, HELP_MSG)
+
 COMMANDS = {    
     '/login':login, 
     '/rooms':list_rooms, 
@@ -176,6 +166,7 @@ COMMANDS = {
     '/message':message,
     '/exit':exit_app,
     '/quit':exit_app,
+    '/help':help_cmd,
     }
 
 
