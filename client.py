@@ -4,6 +4,7 @@ import socket
 import sys
 import json
 import urwid
+from typing import Dict, Tuple
 
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8000
 SERVER_ADDRESS = 'localhost', PORT
@@ -47,7 +48,8 @@ class App(urwid.Pile):
 
     def __init__(self):
         self.chat_messages = [urwid.Text('item0'), urwid.Text('item1')]
-        self.text_widget = urwid.ListBox(urwid.SimpleFocusListWalker(self.chat_messages))
+        self.chat_list_walker = urwid.SimpleFocusListWalker(self.chat_messages)
+        self.text_widget = urwid.ListBox(self.chat_list_walker)
         self.edit_widget = urwid.Edit(' > ')
         self.edit_box = urwid.LineBox(urwid.Filler(self.edit_widget))
         # self.root_widget = urwid.Pile([text_widget, (3, edit_widget)], 1)
@@ -57,10 +59,15 @@ class App(urwid.Pile):
     def keypress(self, size, key):
         if key == 'enter':
             edit_text = self.edit_widget.get_edit_text()
-            self.chat_messages.append(urwid.Text(edit_text))
+            payload = input_check(edit_text, self.printfn)
+            # send payload to server here
+            # self.printfn(edit_text)
             self.edit_widget.edit_text = ''
         else:
             super(App, self).keypress(size, key)
+    
+    def printfn(self, string):
+        self.text_widget.body.append(urwid.Text(string))
 
 def run_client():
     app = App()
@@ -95,7 +102,7 @@ def run_client():
 UUID = 0
 RID = 0
 
-def input_check(input):
+def input_check(input, printfn):
 
     if input[0:1] == '/':
         # This is kinda dirty but adding blank space to string so it can be split with single
@@ -103,11 +110,13 @@ def input_check(input):
         command, msg = input.split(' ',1)
         payload = {}
         try:
-            payload = COMMANDS[command](command, msg)
+            payload, msg = COMMANDS[command](command, msg)
+            if msg is not None:
+                printfn(msg)
         except:
-            print("Bad Command")
+            printfn("Bad Command")
         jsonobject = json.dumps(payload, indent = 2)
-        print(jsonobject)
+        printfn(jsonobject)
     else:
         payload = message(input)
     
@@ -118,19 +127,19 @@ def login(command, name=''):
         'op':'LOGIN',
         'username':name,
         }
-    return payload
+    return (payload, f'Attempting to log in as {name}...')
 
-def list_rooms(command, msg=''):
+def list_rooms(command, _=''):
     payload = {
         'op': 'LIST_ROOMS',
         }
-    return payload
+    return (payload, None)
 
-def list_users(command, msg=''):
+def list_users(command, _=''):
     payload = { 
         'op':'LIST_USERS',
         }
-    return payload
+    return (payload, None)
 
 def join_room(command, room=''):
     payload = { 
@@ -139,14 +148,14 @@ def join_room(command, room=''):
         'room':RID,
         'new':1,
         }
-    return payload
+    return (payload, None)
     
 def leave_room(command, msg=''):
     payload = { 
         'op':'LEAVE_ROOM',
         'room':RID
         }
-    return payload
+    return (payload, None)
     
 def message(command, msg=''):
     payload = { 
@@ -155,7 +164,7 @@ def message(command, msg=''):
         'room':RID,
         'msg':message,
         }
-    return payload
+    return (payload, None)
 
 COMMANDS = {    
     '/login':login, 
