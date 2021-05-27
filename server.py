@@ -5,6 +5,7 @@ import socketserver
 import signal
 import sys
 import os
+from datetime import datetime
 
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8000
 SERVER_ADDRESS = 'localhost', PORT
@@ -21,18 +22,27 @@ Joined room
 }
 
 '''
+client_list = []
 
 class IrcRequestHandler(socketserver.BaseRequestHandler):
 
+    # handles a new client connection and sets up listen loop for messages/commands
     def handle(self):
         print('handle called, pid: ', os.getpid())
-        while data:= self.request.recv(1024):
+        # add client to client list
+        client_list.append(self.request)
+        # listen loop
+        while data := self.request.recv(1024):
             data = data.strip()
-            # self.data = self.request.recv(1024).strip()
-            message = f"{self.client_address[0]} -- {data.decode()}"
-            print(f'message is "{message}"')
-            # server.close_request(self.request)
-            self.request.sendall(message.encode())
+            message = f"{self.client_address[0]}:{self.client_address[1]} -- {data.decode()}"
+            print(f'{datetime.now()}::{message}')
+            for client in client_list:
+                client.sendall(message.encode())
+    
+    # called whenwhen client disconnects
+    def finish(self):
+        print('removing client')
+        client_list.remove(self.request)
 
 
 if __name__ == '__main__':

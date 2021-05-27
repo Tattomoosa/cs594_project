@@ -18,48 +18,39 @@ data = ''
 QUIT_CMDS = ['/quit', '/exit']
 
 def listen_on_socket(sockt, printfn):
-    sockt.settimeout(1)
-    while True:
-        try:
-            data = sockt.recv(1024)
-            if data:
-                printfn(data.decode())
-        except:
-            printfn('listening...')
+    while data := sockt.recv(1024):
+        printfn(data.decode())
 
 class App(urwid.Pile):
 
     def __init__(self):
+        # setup urwid UI, self is main app container
         self.chat_messages = [urwid.Text(WELCOME_MSG)]
         chat_list_walker = urwid.SimpleFocusListWalker(self.chat_messages)
         self.text_widget = urwid.ListBox(chat_list_walker)
         self.edit_widget = urwid.Edit(' > ')
         self.edit_box = urwid.LineBox(urwid.Filler(self.edit_widget))
         super(App, self).__init__([self.text_widget, (3, self.edit_box)], 1)
+        self.loop = urwid.MainLoop(self)
 
+        # setup socket
         self.socket = socket.socket(socket.AF_INET)
         self.socket.connect(SERVER_ADDRESS)
-
-        self.loop = urwid.MainLoop(self)
-        self.socket_thread = Thread(
-            target=listen_on_socket,
-            args=(self.socket, self.printfn)
-        )
+        self.socket_thread = Thread(target=listen_on_socket, args=(self.socket, self.printfn))
         self.socket_thread.start()
 
+    # handles app keypresses (global)
     def keypress(self, size, key):
         if key == 'enter':
             edit_text = self.edit_widget.get_edit_text()
             payload = input_check(edit_text, self.printfn)
-            # send payload to server here
-            self.printfn('SENDING')
-            # THIS FAILS ON MESSAGE 2:
+            self.printfn(f'SENDING: {payload}')
             self.socket.sendall(json.dumps(payload).encode())
-            self.printfn('SENT')
             self.edit_widget.edit_text = ''
         else:
             super(App, self).keypress(size, key)
     
+    # prints into chat scroll
     def printfn(self, string):
         new_text = urwid.Text(string)
         self.text_widget.body.append(new_text)
@@ -93,7 +84,6 @@ def input_check(input, printfn):
     else:
         payload, _ = message(input)
     
-    printfn(f'PAYLOAD IS {payload}')
     return payload
 
 def login(name=''):
