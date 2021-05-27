@@ -1,6 +1,8 @@
 #! /usr/bin/env python
 
 import socket
+from time import sleep
+from datetime import datetime
 import sys
 import json
 import urwid
@@ -16,11 +18,12 @@ QUIT_CMDS = ['/quit', '/exit']
 
 def listen_on_socket(sockt, printfn):
     while True:
-        data = sockt.recv(1024)
-        if not data:
-            printfn('NO DATA RECEIVED - KILLING THREAD')
-            # return
-        printfn(data.decode())
+        sleep(.1)
+        printfn(str(datetime.now()))
+
+        # data = sockt.recv(1024)
+        # if data:
+        #     printfn(data.decode())
 
 class App(urwid.Pile):
 
@@ -33,8 +36,11 @@ class App(urwid.Pile):
         super(App, self).__init__([self.text_widget, (3, self.edit_box)], 1)
 
         self.socket = socket.socket(socket.AF_INET)
-        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        # self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.socket.connect(SERVER_ADDRESS)
+        self.socket.settimeout(.1)
+
+        self.loop = urwid.MainLoop(self)
         self.socket_thread = Thread(
             target=listen_on_socket,
             args=(self.socket, self.printfn)
@@ -53,12 +59,14 @@ class App(urwid.Pile):
             super(App, self).keypress(size, key)
     
     def printfn(self, string):
-        self.text_widget.body.append(urwid.Text(string))
+        new_text = urwid.Text(string)
+        self.text_widget.body.append(new_text)
+        self.text_widget.set_focus_valign('bottom')
+        self.text_widget.set_focus(len(self.text_widget.body) - 1)
 
 def run_client():
     app = App()
-    loop = urwid.MainLoop(app)
-    loop.run()
+    app.loop.run()
 
     return
 
@@ -152,6 +160,12 @@ def message(msg=''):
         }
     return (payload, None)
 
+# TODO doesn't work
+def exit_app(_=''):
+    pass
+    #raise urwid.ExitMainLoop("NOT WORKING")
+    # exit()
+
 COMMANDS = {    
     '/login':login, 
     '/rooms':list_rooms, 
@@ -159,6 +173,8 @@ COMMANDS = {
     '/join':join_room, 
     '/leave':leave_room, 
     '/message':message,
+    '/exit':exit_app,
+    '/quit':exit_app,
     }
 
 
