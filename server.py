@@ -13,25 +13,8 @@ from opcodes import OpCode
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8000
 SERVER_ADDRESS = 'localhost', PORT
 
-'''
-response examples
-
-Keep alive?
-
-Joined room
-{
-    type: JOINROOM,
-    status: SUCCESS,
-}
-
-'''
-
 
 client_list = []
-
-#socket, UUID, USERNAME
-# dict {UUID: soccket, username}
-# dict {room: user1, user2}
 
 class Client():
 
@@ -42,19 +25,21 @@ class Client():
         self.rooms = ['default']
 
 
-# Sends encoded JSON object to all clients
-def send_all(message):
+# Sends message to all clients
+def broadcast_all(message):
     for client in client_list:
-        response(client, message)
+        broadcast(client, message)
 
-def response(client, message):
+# Sends message to passed in client
+def broadcast(client, message):
     message = json.dumps(message).encode()
     client.socket.sendall(message)
 
+# sends message to room
 def broadcast_room(message, room):
     for client in client_list:
         if room in client.rooms:
-            response(client, message)
+            broadcast(client, message)
 
 class IrcRequestHandler(socketserver.BaseRequestHandler):
 
@@ -73,21 +58,28 @@ class IrcRequestHandler(socketserver.BaseRequestHandler):
 
     # called whenwhen client disconnects
     def finish(self):
-        send_all(f'User:{self.client.username} logged out')
+        broadcast_all(f'User:{self.client.username} logged out')
         client_list.remove(self.client)
     
 def login(payload, client):
+
     print(f"Logging in User {payload['username']}")
+    if payload['username'] in client_list.username:
+        message = {
+            'op': OpCode.ERR_NAME_EXISTS
+        }
+        broadcast(client, message)
+        return
+
     client.username = payload['username']
     message = {
         'op': OpCode.LOGIN,
         'username':payload['username']
     }
-    response(client, message)
+    broadcast(client, message)
     return
 
 def list_rooms(payload, client):
-    print('User requested room list')
     rooms = []
     for c in client_list:
         for room in c.rooms:
@@ -99,11 +91,10 @@ def list_rooms(payload, client):
         'op': OpCode.LIST_ROOMS,
         'rooms': rooms,
     }
-    response(client, message)
+    broadcast(client, message)
     return
 
 def list_users(payload, client):
-    print('User requested user list')
     users = []
     print(payload)
     if payload['room'] == '':
@@ -119,11 +110,11 @@ def list_users(payload, client):
         'users': users,
     }
 
-    response(client, message)
+    broadcast(client, message)
     return
 
 def join_room(payload, client):
-    print('User requested to join room')
+    print(f'{payload["user"]} joined room {payload["room"]}')
     newroom = False
     if payload['room'] not in client.rooms:
         client.rooms += [payload['room']]
@@ -141,13 +132,13 @@ def join_room(payload, client):
     return
 
 def leave_room(payload, client):
-    print('User requested leave room')
+    print(f'{payload["user"]} left room {payload["room"]}')
     client.rooms.remove(payload['room'])
     message = {
         'op': OpCode.LEAVE_ROOM,
         'room': payload['room']
     }
-    response(client, message)
+    broadcast(client, message)
     return
 
 def message(payload, client):
@@ -161,8 +152,11 @@ def message(payload, client):
     return
 
 def exit_app(payload, client):
-    print('User left')
-    # Remove user from rooms
+    message = {
+        'op': OpCode.USER_EXIT,
+        'user': client.username,
+    }
+    broadcast_all(message)
     return
 
 def help_cmd(payload, client):
