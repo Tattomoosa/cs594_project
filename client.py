@@ -11,6 +11,7 @@ from threading import Thread
 from opcodes import OpCode
 
 WELCOME_MSG = "Welcome to IRC!"
+TIMEOUT_TIME = 5
 
 USAGE = '''
 Usage: {sys.argv[0]} [address]
@@ -51,6 +52,8 @@ def listen_on_socket(sockt, responsefn):
     sleep(0.1)
     while data := sockt.recv(1024):
         responsefn(json.loads(data.decode()))
+
+
 
 def login(name=''):
     payload = { 
@@ -95,6 +98,13 @@ class App(urwid.Pile):
                 sockt.sendall(json.dumps(login_data[0]).encode()) # # login username
                 resp = sockt.recv(1024).decode()
                 resp = json.loads(resp)
+                if resp['op'] != OpCode.LOGIN:
+                    if resp['op'] == OpCode.ERR_NAME_EXISTS:
+                        print('ERROR: Username exists')
+                    elif resp['op'] == OpCode.ERR_ILLEGAL_NAME:
+                        print('ERROR: Username is illegal')
+                    return None
+
                 user = User(resp['username'], sockt)
                 return user
             except Exception as e:

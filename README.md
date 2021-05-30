@@ -19,7 +19,6 @@ First step:
 * /users
 * /join
 * /leave
-* /message
 * /exit
 * /quit
 * /help
