@@ -58,6 +58,8 @@ class Room:
 
     def __init__(self, name, messages=[]):
         self.name = name
+        # if not messages:
+            # messages = [urwid.Text(name)]
         self.messages = messages
 
 class App(urwid.Pile):
@@ -106,13 +108,13 @@ class App(urwid.Pile):
             '/debug': self.toggle_debug,
             }
 
-        self.current_room_index = 0
 
         welcome_messages = [
             urwid.Text(WELCOME_MSG),
             urwid.Text(f"You are logged in as '{user.username}'")
             ]
         self.rooms = [Room('default', welcome_messages)]
+        self.current_room = self.rooms[0]
 
         # setup urwid UI, self is main app container
         chat_list_walker = urwid.SimpleFocusListWalker(self.current_room.messages)
@@ -150,7 +152,6 @@ class App(urwid.Pile):
         if not room:
             room = self.current_room
         new_text = urwid.Text(string)
-        # self.text_widget.body.append(new_text)
         room.messages.append(new_text)
         if room == self.current_room:
             self.text_widget.body = room.messages
@@ -172,33 +173,22 @@ class App(urwid.Pile):
                     self.printfn(msg)
             except KeyError:
                 self.printfn(f"Bad Command '{command}'")
-            # if payload:
-            #     jsonobject = json.dumps(payload, indent = 2)
-            #     self.printfn(jsonobject)
         else:
             payload, _ = self.message(input)
         
         return payload
-    
-    @property
-    def current_room(self):
-        return self.rooms[self.current_room_index]
     
     def get_room_by_name(self, room_name):
         for (i, room) in enumerate(self.rooms):
             if room.name == room_name:
                 return self.rooms[i]
     
-    def set_current_room(self, room_index):
-        self.current_room_index = room_index
-        room = self.current_room
-        self.text_widget.body = room.messages
-        self.loop.draw_screen()
-    
-    def switch_current_room_by_name(self, room_name):
-        for (i, room) in enumerate(self.rooms):
+    def switch_current_room(self, room_name):
+        for room in self.rooms:
             if room.name == room_name:
-                self.set_current_room(i)
+                self.current_room = room
+                self.text_widget.body = room.messages
+                self.loop.draw_screen()
                 return
         raise ValueError(f"No room named '{room_name}'\nRooms: {[r.name for r in self.rooms]}")
     
@@ -215,9 +205,11 @@ class App(urwid.Pile):
 
         elif op == OpCode.LOGIN:
             self.printfn(f'User {response["username"]} has logged in.')
+
         elif op == OpCode.LIST_USERS:
             self.printfn(f'USERS')
             self.printfn(','.join(response['users']))
+
         elif op == OpCode.LIST_ROOMS:
             self.printfn(f'ROOMS')
             self.printfn(','.join(response['rooms']))
@@ -227,13 +219,25 @@ class App(urwid.Pile):
                 room_name = response['room']
                 if room_name not in self.rooms:
                     self.rooms.append(Room(room_name, []))
-                self.switch_current_room_by_name(room_name)
+                self.switch_current_room(room_name)
                 self.printfn(f'Joined room "{response["room"]}"')
             else:
                 self.printfn(f'{response["user"]} has joined {response["room"]}')
+        
+        elif op == OpCode.LEAVE_ROOM:
+            room_name = response["room"]
+            if room_name == 'default':
+                self.printfn("Leaving room 'default' is not allowed")
+                return
+            room = self.get_room_by_name(room_name)
+            if room == self.current_room:
+                self.switch_current_room('default')
+            self.rooms.remove(room)
+
         else:
             self.printfn(f'UKNOWN OPCODE {op}')
             self.printfn(json.dumps(response))
+        
 
     # COMMANDS operations
 
@@ -259,7 +263,7 @@ class App(urwid.Pile):
 
     def join_room(self, room=''):
         if room in [r.name for r in self.rooms]:
-            self.switch_current_room_by_name(room)
+            self.switch_current_room(room)
             return (None, f'Switched to room {room}')
         payload = { 
             'op': OpCode.JOIN_ROOM,
