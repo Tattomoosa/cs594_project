@@ -228,7 +228,7 @@ class App(urwid.Pile):
                 if room_name not in self.rooms:
                     self.rooms.append(Room(room_name, []))
                 self.switch_current_room_by_name(room_name)
-                self.printf(f'Joined room {response["room"]}')
+                self.printfn(f'Joined room {response["room"]}')
             else:
                 self.printfn(f'{response["user"]} has joined {response["room"]}')
         else:
