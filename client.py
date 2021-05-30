@@ -11,8 +11,19 @@ from threading import Thread
 from opcodes import OpCode
 
 WELCOME_MSG = "Welcome to IRC!"
-PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8000
-SERVER_ADDRESS = 'localhost', PORT
+
+USAGE = '''
+Usage: {sys.argv[0]} [address]
+    address: Server address - can be a port (eg 8000) on localhost, or IP:port (eg 127.0.0.1:8000)
+'''
+
+SERVER_ADDRESS = 'localhost', 8000
+if len(sys.argv) > 1:
+    if ':' in sys.argv[1]:
+        ip, port = sys.argv[1].split(':')
+        SERVER_ADDRESS = (ip, int(port))
+    else:
+        SERVER_ADDRESS = 'localhost', int(sys.argv[1])
 # temp
 UUID = 0
 RID = 0
@@ -27,7 +38,7 @@ Commands are prefixed with '/', which must be the first character of the input t
 /rooms - List rooms
 /users [room] - List all users, or users in [room]
 /join [room] - Join room
-/leave room - Leave room
+/leave [room] - Leave current room, or leave [room]
 /exit - Exit program
 /quit - Exit program
 /help - Print this message
@@ -58,13 +69,15 @@ class Room:
 
     def __init__(self, name, messages=[]):
         self.name = name
-        # if not messages:
-            # messages = [urwid.Text(name)]
         self.messages = messages
 
 class App(urwid.Pile):
 
     def __init__(self):
+        '''
+        Attempts to login and builds UI upon success. Main loop must be started
+        separately.
+        '''
         # attempt to connect to server socket
         try:
             sockt = socket.socket(socket.AF_INET)
@@ -195,6 +208,7 @@ class App(urwid.Pile):
         except:
             self.printfn('ERROR: Malformed response from server:')
             self.printfn(response)
+            return
 
         if op == OpCode.MESSAGE:
             message = f'{response["user"]}: {response["MESSAGE"]}'
@@ -224,6 +238,9 @@ class App(urwid.Pile):
                 self.printfn(f'Joined room "{response["room"]}"')
             else:
                 self.printfn(f'{response["user"]} has joined {response["room"]}')
+        
+        elif op == OpCode.USER_EXIT:
+            self.printfn(f'''User '{response["user"]}' has logged off''')
         
         elif op == OpCode.LEAVE_ROOM:
             room_name = response["room"]
