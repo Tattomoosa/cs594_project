@@ -154,12 +154,7 @@ class App(urwid.Pile):
     def input_check(self, input):
 
         if input[0:1] == '/':
-            # This is kinda dirty but adding blank space to string so it can be split with single
-            # input+=" "
-            if ' ' in input:
-                command, msg = input.split(' ',1)
-            else:
-                command, msg = input, ''
+            command, msg = input.split(' ', 1) if ' ' in input else input, ''
             payload = None
             try:
                 payload, msg = self.commands[command](msg)

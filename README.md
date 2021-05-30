@@ -12,5 +12,17 @@ First step:
 
 
 
+## Client Commands
+
+* /login
+* /rooms
+* /users
+* /join
+* /leave
+* /message
+* /exit
+* /quit
+* /help
+* /debug
 
 
