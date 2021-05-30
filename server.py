@@ -86,7 +86,6 @@ def login(payload, client):
         'username':payload['username']
     }
     response(client, message)
-    send_all(message)
     return
 
 def list_rooms(payload, client):
