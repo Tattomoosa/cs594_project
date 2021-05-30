@@ -53,12 +53,9 @@ class IrcRequestHandler(socketserver.BaseRequestHandler):
         # listen loop
         while data := self.request.recv(1024):
             data = json.loads(data.strip().decode())
-            print(data['op'])
-            if data['op'] == 'LOGIN':
-                self.client.username = data['username']
+
+            COMMANDS[data['op']](data, self.client)
             
-            print(self.client.username)
-            print(self.client.uuid)
 
             #message = f"{self.client_address[0]}:{self.client_address[1]} -- {data.decode()}"
             #print(f'{datetime.now()}::{message}')
@@ -72,22 +69,34 @@ class IrcRequestHandler(socketserver.BaseRequestHandler):
         client_list.remove(self.client)
     
 
-def login(payload):
-
+def login(payload, client):
+    print(f"Logging in User {payload['username']}")
+    message = {
+        'username':payload['username']
+    }
+    print(json.dumps(message))
+    client.socket.sendall(json.dumps(message).encode())
     return
 def list_rooms(payload):
+    print('User requested room list')
     return
 def list_users(payload):
+    print('User requested user list')
     return
 def join_room(payload):
+    print('User requested to join room')
     return
 def leave_room(payload):
+    print('User requested leave room')
     return
 def message(payload):
+    print('User requested to message')
     return
 def exit_app(payload):
+    print('User left')
     return
 def help_cmd(payload):
+    print('User requested help')
     return
 
 
@@ -98,6 +107,7 @@ COMMANDS = {
     'JOIN_ROOM':join_room, 
     'LEAVE_ROOM':leave_room, 
     'MESSAGE':message,
+    'EXIT':exit_app,
     'EXIT':exit_app,
     '/help':help_cmd,
     }
