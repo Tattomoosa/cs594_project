@@ -64,7 +64,8 @@ class IrcRequestHandler(socketserver.BaseRequestHandler):
 def login(payload, client):
 
     print(f"Logging in User {payload['username']}")
-    if payload['username'] in client_list.username:
+    # if payload['username'] in client_list.username:
+    if payload['username'] in [c.username for c in client_list]:
         message = {
             'op': OpCode.ERR_NAME_EXISTS
         }
