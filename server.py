@@ -8,6 +8,7 @@ import os
 from datetime import datetime
 import uuid
 import json
+from opcodes import OpCode
 
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8000
 SERVER_ADDRESS = 'localhost', PORT
@@ -27,6 +28,7 @@ Joined room
 
 
 client_list = []
+rooms_list = ['default', 'test', 'test2']
 
 #socket, UUID, USERNAME
 # dict {UUID: soccket, username}
@@ -41,10 +43,14 @@ class Client():
         self.rooms = []
 
 
+# Sends encoded JSON object to all clients
 def send_all(message):
-    print("test log out")
+    message = json.dumps(message).encode()
     for client in client_list:
-        client.socket.sendall(message.encode())
+        client.socket.sendall(message)
+def response(client, message):
+    message = json.dumps(message).encode()
+    client.socket.sendall(message)
 
 class IrcRequestHandler(socketserver.BaseRequestHandler):
 
@@ -69,47 +75,75 @@ class IrcRequestHandler(socketserver.BaseRequestHandler):
     
     # called whenwhen client disconnects
     def finish(self):
-        for client in client_list:
-            send_all(f'User:{self.client.username} logged out')
+        send_all(f'User:{self.client.username} logged out')
         client_list.remove(self.client)
     
 def login(payload, client):
     print(f"Logging in User {payload['username']}")
     client.username = payload['username']
     message = {
+        'op': OpCode.LOGIN,
         'username':payload['username']
     }
-    print(json.dumps(message))
-    client.socket.sendall(json.dumps(message).encode())
+    response(client, message)
+    send_all(message)
     return
 
-def list_rooms(payload):
+def list_rooms(payload, client):
     print('User requested room list')
+    print(rooms_list)
+    message = {
+        'op': OpCode.LIST_ROOMS,
+        'rooms': rooms_list,
+    }
     return
 
-def list_users(payload):
-
+def list_users(payload, client):
     print('User requested user list')
+    users = []
+    for client in client_list:
+        users += [client.username]
+    message = {
+        'op': OpCode.LIST_USERS,
+        'users': users,
+    }
     return
 
-def join_room(payload):
+def join_room(payload, client):
     print('User requested to join room')
+    message = {
+        'op': OpCode.JOIN_ROOM,
+    }
     return
 
-def leave_room(payload):
+def leave_room(payload, client):
     print('User requested leave room')
+    message = {
+        'op': OpCode.LEAVE_ROOM,
+    }
     return
 
-def message(payload):
-    print('User requested to message')
+def message(payload, client):
+    message = {
+        'op': OpCode.MESSAGE,
+        'user': 'username',
+        'room': 'default',
+        'MESSAGE': payload['message'],
+    }
+    send_all(message)
     return
 
-def exit_app(payload):
+def exit_app(payload, client):
     print('User left')
+    # Remove user from rooms
     return
 
-def help_cmd(payload):
+def help_cmd(payload, client):
     print('User requested help')
+    message = {
+        'op': OpCode.LOGIN,
+        'username':payload['username']
+    }
     return
 
 COMMANDS = {    
