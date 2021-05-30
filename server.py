@@ -28,7 +28,6 @@ Joined room
 
 
 client_list = []
-rooms_list = ['default', 'test', 'test2']
 
 #socket, UUID, USERNAME
 # dict {UUID: soccket, username}
@@ -40,7 +39,7 @@ class Client():
         self.socket = socket
         self.uuid = uuid.uuid1() # make UUID
         self.username = ' '
-        self.rooms = []
+        self.rooms = ['default']
 
 
 # Sends encoded JSON object to all clients
@@ -84,10 +83,16 @@ def login(payload, client):
 
 def list_rooms(payload, client):
     print('User requested room list')
-    print(rooms_list)
+    rooms = []
+    for c in client_list:
+        for room in c.rooms:
+            rooms += [room]
+
+    rooms = list(set(rooms))
+
     message = {
         'op': OpCode.LIST_ROOMS,
-        'rooms': rooms_list,
+        'rooms': rooms,
     }
     response(client, message)
     return
@@ -121,11 +126,13 @@ def leave_room(payload, client):
 def message(payload, client):
     message = {
         'op': OpCode.MESSAGE,
-        'user': 'username',
-        'room': 'default',
+        'user': client.username,
+        'room': payload['room'],
         'MESSAGE': payload['msg'],
     }
-    send_all(message)
+    for c in client_list:
+        if payload['room'] in c.rooms:
+            response(c, message) 
     return
 
 def exit_app(payload, client):
