@@ -44,12 +44,17 @@ class Client():
 
 # Sends encoded JSON object to all clients
 def send_all(message):
-    message = json.dumps(message).encode()
     for client in client_list:
-        client.socket.sendall(message)
+        response(client, message)
+
 def response(client, message):
     message = json.dumps(message).encode()
     client.socket.sendall(message)
+
+def broadcast_room(message, room):
+    for client in client_list:
+        if room in client.rooms:
+            response(client, message)
 
 class IrcRequestHandler(socketserver.BaseRequestHandler):
 
@@ -100,20 +105,38 @@ def list_rooms(payload, client):
 def list_users(payload, client):
     print('User requested user list')
     users = []
-    for client in client_list:
-        users += [client.username]
+    print(payload)
+    if payload['room'] == '':
+        for c in client_list:
+            users += [c.username]
+    else:
+        for c in client_list:
+            if payload['room'] in c.rooms:
+                users += [client.username]
+
     message = {
         'op': OpCode.LIST_USERS,
         'users': users,
     }
+
     response(client, message)
     return
 
 def join_room(payload, client):
     print('User requested to join room')
+    newroom = False
+    if payload['room'] not in client.rooms:
+        client.rooms += [payload['room']]
+        newroom = True
+
     message = {
         'op': OpCode.JOIN_ROOM,
+        'username': payload['username'],
+        'new': newroom
     }
+
+    broadcast_room(message,payload['room'])
+    
     return
 
 def leave_room(payload, client):
