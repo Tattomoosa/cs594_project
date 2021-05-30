@@ -211,7 +211,10 @@ class App(urwid.Pile):
                 self.printfn(message)
             else:
                 room = self.get_room_by_name(response['room'])
-                room.messages.append(message)
+                try:
+                    room.messages.append(message)
+                except Exception as e:
+                    raise ValueError(f'ROOM IS {room}')
 
         elif op == OpCode.LOGIN:
             self.printfn(f'User {response["username"]} has logged in.')
@@ -228,7 +231,7 @@ class App(urwid.Pile):
                 if room_name not in self.rooms:
                     self.rooms.append(Room(room_name, []))
                 self.switch_current_room_by_name(room_name)
-                self.printfn(f'Joined room {response["room"]}')
+                self.printfn(f'Joined room "{response["room"]}"')
             else:
                 self.printfn(f'{response["user"]} has joined {response["room"]}')
         else:
