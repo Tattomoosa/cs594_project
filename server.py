@@ -41,6 +41,10 @@ class Client():
         self.rooms = []
 
 
+def send_all(message):
+    print("test log out")
+    for client in client_list:
+        client.socket.sendall(message.encode())
 
 class IrcRequestHandler(socketserver.BaseRequestHandler):
 
@@ -65,7 +69,8 @@ class IrcRequestHandler(socketserver.BaseRequestHandler):
     
     # called whenwhen client disconnects
     def finish(self):
-        print(f"{self.client.username} logged out")
+        for client in client_list:
+            send_all(f'User:{self.client.username} logged out')
         client_list.remove(self.client)
     
 def login(payload, client):
