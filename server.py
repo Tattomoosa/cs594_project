@@ -65,40 +65,47 @@ class IrcRequestHandler(socketserver.BaseRequestHandler):
     
     # called whenwhen client disconnects
     def finish(self):
-        print('removing client')
+        print(f"{self.client.username} logged out")
         client_list.remove(self.client)
     
-
 def login(payload, client):
     print(f"Logging in User {payload['username']}")
+    client.username = payload['username']
     message = {
         'username':payload['username']
     }
     print(json.dumps(message))
     client.socket.sendall(json.dumps(message).encode())
     return
+
 def list_rooms(payload):
     print('User requested room list')
     return
+
 def list_users(payload):
+
     print('User requested user list')
     return
+
 def join_room(payload):
     print('User requested to join room')
     return
+
 def leave_room(payload):
     print('User requested leave room')
     return
+
 def message(payload):
     print('User requested to message')
     return
+
 def exit_app(payload):
     print('User left')
     return
+
 def help_cmd(payload):
     print('User requested help')
     return
-
 
 COMMANDS = {    
     'LOGIN':login, 
