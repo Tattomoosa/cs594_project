@@ -59,9 +59,9 @@ class App(urwid.Pile):
         self.loop.draw_screen()
 
 class User:
-    def __init__(self, username, uuid, sockt):
+    def __init__(self, username, sockt):
         self.username = username
-        self.uuid = uuid
+        # self.uuid = uuid
         self.socket = sockt
 
 
@@ -78,13 +78,14 @@ def run_client():
             print('Enter Username: ', end='')
             username = input()
             login_data = login(username)
-            print(login_data[0]) # attempt message
-            sockt.sendall(json.dumps(login_data[1]).encode()) # # login username
+            print(login_data[1]) # attempt message
+            sockt.sendall(json.dumps(login_data[0]).encode()) # # login username
             resp = sockt.recv(1024, 10)
             resp = resp.decode()
             print(resp)
             resp = json.loads(resp)
-            user = User(resp['username'], resp['uuid'], sockt)
+            user = User(resp['username'], sockt)
+            print(user)
             return user
         except Exception as e:
             raise e
@@ -93,6 +94,7 @@ def run_client():
     user = None
     while not user:
         user = attempt_login()
+    print('LOGIN SUCCESFFUl')
 
     app = App(user)
     app.loop.run()
