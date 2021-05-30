@@ -33,7 +33,7 @@ class App(urwid.Pile):
         self. rooms = []
         self.chat_messages = [
             urwid.Text(WELCOME_MSG),
-            f"You are logged in as '{user.username}'"
+            urwid.Text(f"You are logged in as '{user.username}'")
             ]
         chat_list_walker = urwid.SimpleFocusListWalker(self.chat_messages)
         self.text_widget = urwid.ListBox(chat_list_walker)
