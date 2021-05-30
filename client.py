@@ -80,7 +80,7 @@ def run_client():
             login_data = login(username)
             print(login_data[1]) # attempt message
             sockt.sendall(json.dumps(login_data[0]).encode()) # # login username
-            resp = sockt.recv(1024, 10)
+            resp = sockt.recv(1024)
             resp = resp.decode()
             print(resp)
             resp = json.loads(resp)
