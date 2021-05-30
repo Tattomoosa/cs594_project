@@ -157,9 +157,7 @@ def message(payload, client):
         'room': payload['room'],
         'MESSAGE': payload['msg'],
     }
-    for c in client_list:
-        if payload['room'] in c.rooms:
-            response(c, message) 
+    broadcast_room(message, payload['room'])
     return
 
 def exit_app(payload, client):
