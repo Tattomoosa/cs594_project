@@ -58,7 +58,7 @@ class IrcRequestHandler(socketserver.BaseRequestHandler):
                 message = {
                     'op': OpCode.ERR_ILLEGAL_OP
                 }
-                broadcast(message)
+                broadcast(self.client, message)
             
 
     # called whenwhen client disconnects
