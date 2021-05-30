@@ -19,12 +19,17 @@ Usage: {sys.argv[0]} [address]
 '''
 
 SERVER_ADDRESS = 'localhost', 8000
-if len(sys.argv) > 1:
-    if ':' in sys.argv[1]:
-        ip, port = sys.argv[1].split(':')
-        SERVER_ADDRESS = (ip, int(port))
+try:
+    if len(sys.argv) > 1:
+        if ':' in sys.argv[1]:
+            ip, port = sys.argv[1].split(':')
+            SERVER_ADDRESS = (ip, int(port))
+        else:
+            SERVER_ADDRESS = 'localhost', int(sys.argv[1])
     else:
-        SERVER_ADDRESS = 'localhost', int(sys.argv[1])
+        raise Argument
+except:
+    print(USAGE)
 # temp
 UUID = 0
 RID = 0
@@ -262,6 +267,21 @@ class App(urwid.Pile):
                 self.switch_current_room('default')
             self.rooms.remove(room)
         
+        elif op == OpCode.ERR_ILLEGAL_OP:
+            self.printfn('SERVER ERROR: Illegal Operation')
+
+        elif op == OpCode.ERR_NAME_EXISTS:
+            self.printfn('SERVER ERROR: Name exists')
+
+        elif op == OpCode.ERR_ILLEGAL_NAME:
+            self.printfn('SERVER ERROR: Illegal Name')
+
+        elif op == OpCode.ERR_ILLEGAL_MSG:
+            self.printfn('SERVER ERROR: Illegal Message')
+
+        elif op == OpCode.ERR_ILLEGAL_MSG:
+            self.printfn('SERVER ERROR: Received malformed request')
+
         elif op == OpCode.ERR:
             self.printfn(json.loads(response))
 
