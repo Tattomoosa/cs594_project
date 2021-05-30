@@ -190,7 +190,11 @@ class App(urwid.Pile):
         raise ValueError(f"No room named '{room_name}'\nRooms: {[r.name for r in self.rooms]}")
     
     def handle_server_response(self, response):
-        op = response['op']
+        try:
+            op = response['op']
+        except:
+            self.printfn('ERROR: Malformed response from server:')
+            self.printfn(response)
 
         if op == OpCode.MESSAGE:
             message = f'{response["user"]}: {response["MESSAGE"]}'
