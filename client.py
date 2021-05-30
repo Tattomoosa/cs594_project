@@ -23,11 +23,11 @@ COMMANDS
 
 Commands are prefixed with '/', which must be the first character of the input text.
 
-/login [username]
-        Login with username.
-
-/rooms
-        List rooms
+/login [username] - Login with [username]
+/rooms - List rooms
+/users [room] - List all users, or users in [room]
+/join [room] - Join room
+/leave room - Leave room
 
 TODO - more
 '''
@@ -154,7 +154,10 @@ class App(urwid.Pile):
     def input_check(self, input):
 
         if input[0:1] == '/':
-            command, msg = input.split(' ', 1) if ' ' in input else input, ''
+            if ' ' in input:
+                command, msg = input.split(' ',1)
+            else:
+                command, msg = input, ''
             payload = None
             try:
                 payload, msg = self.commands[command](msg)
