@@ -8,34 +8,36 @@ import json
 import urwid
 from threading import Thread
 
+from opcodes import OpCode
+
 WELCOME_MSG = "Welcome to IRC!"
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8000
 SERVER_ADDRESS = 'localhost', PORT
-ROOM_NAME = 'default'
 
-username = 'test user'
-data = ''
-QUIT_CMDS = ['/quit', '/exit']
-
+# runs on another 
 def listen_on_socket(sockt, printfn):
     while data := sockt.recv(1024):
         printfn(data.decode())
 
 class Room:
 
-    def __init__(self, messages: []):
+    def __init__(self, name: str, messages: []):
+        self.name = name
         self.messages = messages
 
 class App(urwid.Pile):
 
     def __init__(self, user):
-        # setup urwid UI, self is main app container
-        self. rooms = []
-        self.chat_messages = [
+        self.current_room_index = 0
+
+        welcome_messages = [
             urwid.Text(WELCOME_MSG),
             urwid.Text(f"You are logged in as '{user.username}'")
             ]
-        chat_list_walker = urwid.SimpleFocusListWalker(self.chat_messages)
+        self.rooms = [Room('default', welcome_messages)]
+
+        # setup urwid UI, self is main app container
+        chat_list_walker = urwid.SimpleFocusListWalker(self.current_room.messages)
         self.text_widget = urwid.ListBox(chat_list_walker)
         self.edit_widget = urwid.Edit(' > ')
         self.edit_box = urwid.LineBox(urwid.Filler(self.edit_widget))
@@ -52,7 +54,7 @@ class App(urwid.Pile):
     def keypress(self, size, key):
         if key == 'enter':
             edit_text = self.edit_widget.get_edit_text()
-            payload = input_check(edit_text, self.printfn)
+            payload = self.input_check(edit_text)
             self.printfn(f'SENDING: {payload}')
             self.socket.sendall(json.dumps(payload).encode())
             self.edit_widget.edit_text = ''
@@ -66,6 +68,35 @@ class App(urwid.Pile):
         self.text_widget.set_focus_valign('bottom')
         self.text_widget.set_focus(len(self.text_widget.body) - 1)
         self.loop.draw_screen()
+
+    def input_check(self, input):
+
+        if input[0:1] == '/':
+            # This is kinda dirty but adding blank space to string so it can be split with single
+            input+=" "
+            command, msg = input.split(' ',1)
+            payload = {}
+            try:
+                payload, msg = COMMANDS[command](msg)
+                if msg is not None:
+                    self.printfn(msg)
+            except:
+                self.printfn("Bad Command")
+            jsonobject = json.dumps(payload, indent = 2)
+            self.printfn(jsonobject)
+        else:
+            payload, _ = message(input)
+        
+        return payload
+    
+    @property
+    def current_room(self):
+        return self.rooms[self.current_room_index]
+    
+    def switch_room(self,room_index):
+        self.current_room_index = room_index
+        room = self.current_room
+        self.text_widget.body = room.messages
 
 class User:
     def __init__(self, username, sockt):
@@ -110,48 +141,29 @@ def run_client():
 UUID = 0
 RID = 0
 
-def input_check(input, printfn):
-
-    if input[0:1] == '/':
-        # This is kinda dirty but adding blank space to string so it can be split with single
-        input+=" "
-        command, msg = input.split(' ',1)
-        payload = {}
-        try:
-            payload, msg = COMMANDS[command](msg)
-            if msg is not None:
-                printfn(msg)
-        except:
-            printfn("Bad Command")
-        jsonobject = json.dumps(payload, indent = 2)
-        printfn(jsonobject)
-    else:
-        payload, _ = message(input)
-    
-    return payload
 
 def login(name=''):
     payload = { 
-        'op':'LOGIN',
+        'op': OpCode.LOGIN,
         'username':name,
         }
     return (payload, f'Attempting to log in as {name}...')
 
 def list_rooms(_=''):
     payload = {
-        'op': 'LIST_ROOMS',
+        'op': OpCode.LIST_ROOMS,
         }
     return (payload, None)
 
 def list_users(_=''):
     payload = { 
-        'op':'LIST_USERS',
+        'op': OpCode.LIST_USERS,
         }
     return (payload, None)
 
 def join_room(room=''):
     payload = { 
-        'op':'JOIN_ROOM',
+        'op': OpCode.JOIN_ROOM,
         'user':UUID,
         'room':RID,
         'new':1,
@@ -160,14 +172,14 @@ def join_room(room=''):
     
 def leave_room(msg=''):
     payload = { 
-        'op':'LEAVE_ROOM',
+        'op': OpCode.LEAVE_ROOM,
         'room':RID
         }
     return (payload, None)
     
 def message(msg=''):
     payload = { 
-        'op': 'MESSAGE',
+        'op': OpCode.MESSAGE,
         'user': UUID,
         'room': RID,
         'msg': msg,
@@ -176,9 +188,7 @@ def message(msg=''):
 
 # TODO doesn't work
 def exit_app(msg=''):
-    payload = {
-        'op': 'EXIT'
-    }
+    exit()
 
 HELP_MSG = '''COMMANDS
 
