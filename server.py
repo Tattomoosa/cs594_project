@@ -132,6 +132,7 @@ def join_room(payload, client):
     message = {
         'op': OpCode.JOIN_ROOM,
         'user': payload['user'],
+        'room': payload['room'],
         'new': newroom
     }
 
@@ -141,9 +142,12 @@ def join_room(payload, client):
 
 def leave_room(payload, client):
     print('User requested leave room')
+
     message = {
         'op': OpCode.LEAVE_ROOM,
+        'room': payload['room']
     }
+    response(client, message)
     return
 
 def message(payload, client):
