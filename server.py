@@ -89,7 +89,7 @@ def list_rooms(payload, client):
         'op': OpCode.LIST_ROOMS,
         'rooms': rooms_list,
     }
-    response(message)
+    response(client, message)
     return
 
 def list_users(payload, client):
@@ -101,7 +101,7 @@ def list_users(payload, client):
         'op': OpCode.LIST_USERS,
         'users': users,
     }
-    response(message)
+    response(client, message)
     return
 
 def join_room(payload, client):
