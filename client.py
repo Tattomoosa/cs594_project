@@ -56,7 +56,7 @@ class User:
 
 class Room:
 
-    def __init__(self, name: str, messages: []):
+    def __init__(self, name, messages=[]):
         self.name = name
         self.messages = messages
 
@@ -193,13 +193,14 @@ class App(urwid.Pile):
         self.current_room_index = room_index
         room = self.current_room
         self.text_widget.body = room.messages
+        self.loop.draw_screen()
     
     def switch_current_room_by_name(self, room_name):
-        for (i, name) in enumerate(self.rooms):
-            if name == room_name:
+        for (i, room) in enumerate(self.rooms):
+            if room.name == room_name:
                 self.set_current_room(i)
                 return
-        raise ValueError(f"No room named '{room_name}'")
+        raise ValueError(f"No room named '{room_name}'\nRooms: {[r.name for r in self.rooms]}")
     
     def handle_server_response(self, response):
         op = response['op']
@@ -220,13 +221,14 @@ class App(urwid.Pile):
         elif op == OpCode.LIST_ROOMS:
             self.printfn(f'ROOMS')
             self.printfn(','.join(response['rooms']))
+
         elif op == OpCode.JOIN_ROOM:
             if response["user"] == self.user.username:
                 room_name = response['room']
-                if room_name in self.rooms:
-                    self.switch_current_room_by_name(room_name)
-                else:
+                if room_name not in self.rooms:
                     self.rooms.append(Room(room_name, []))
+                self.switch_current_room_by_name(room_name)
+                self.printf(f'Joined room {response["room"]}')
             else:
                 self.printfn(f'{response["user"]} has joined {response["room"]}')
         else:
@@ -258,7 +260,7 @@ class App(urwid.Pile):
     def join_room(self, room=''):
         if room in [r.name for r in self.rooms]:
             self.switch_current_room_by_name(room)
-            return
+            return (None, f'Switched to room {room}')
         payload = { 
             'op': OpCode.JOIN_ROOM,
             'user': self.user.username,
@@ -275,6 +277,8 @@ class App(urwid.Pile):
         return (payload, None)
         
     def message(self, msg=''):
+        if msg == '':
+            return (None, None)
         payload = { 
             'op': OpCode.MESSAGE,
             'user': UUID,
