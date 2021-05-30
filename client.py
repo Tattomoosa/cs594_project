@@ -45,6 +45,12 @@ def login(name=''):
         'username':name,
         }
     return (payload, f'Attempting to log in as {name}...')
+        
+
+class User:
+    def __init__(self, username, sockt):
+        self.username = username
+        self.socket = sockt
 
 class Room:
 
@@ -84,6 +90,7 @@ class App(urwid.Pile):
         while not user:
             user = attempt_login()
 
+        self.debug = False
         self.commands = {    
             '/login': self.login, 
             '/rooms': self.list_rooms, 
@@ -94,6 +101,7 @@ class App(urwid.Pile):
             '/exit': self.exit_app,
             '/quit': self.exit_app,
             '/help': self.help_cmd,
+            '/debug': self.toggle_debug,
             }
 
         self.current_room_index = 0
@@ -117,6 +125,10 @@ class App(urwid.Pile):
         self.socket = user.socket
         self.socket_thread = Thread(target=listen_on_socket, args=(self.socket, self.handle_server_response))
         self.socket_thread.start()
+    
+    def toggle_debug(self, _=''):
+        self.debug = not self.debug
+        return (None, f"DEBUG IS [{'ON' if self.debug else 'OFF'}]")
 
     # handles app keypresses (global)
     def keypress(self, size, key):
@@ -124,7 +136,8 @@ class App(urwid.Pile):
             edit_text = self.edit_widget.get_edit_text()
             payload = self.input_check(edit_text)
             if payload:
-                self.printfn(f'SENDING: {payload}')
+                if self.debug:
+                    self.printfn(f'SENDING: {payload}')
                 self.socket.sendall(json.dumps(payload).encode())
             self.edit_widget.edit_text = ''
         else:
@@ -142,8 +155,11 @@ class App(urwid.Pile):
 
         if input[0:1] == '/':
             # This is kinda dirty but adding blank space to string so it can be split with single
-            input+=" "
-            command, msg = input.split(' ',1)
+            # input+=" "
+            if ' ' in input:
+                command, msg = input.split(' ',1)
+            else:
+                command, msg = input, ''
             payload = None
             try:
                 payload, msg = self.commands[command](msg)
@@ -163,10 +179,17 @@ class App(urwid.Pile):
     def current_room(self):
         return self.rooms[self.current_room_index]
     
-    def switch_room(self, room_index):
+    def set_current_room(self, room_index):
         self.current_room_index = room_index
         room = self.current_room
         self.text_widget.body = room.messages
+    
+    def switch_current_room_by_name(self, room_name):
+        for (i, name) in enumerate(self.rooms):
+            if name == room_name:
+                self.set_current_room(i)
+                return
+        raise ValueError(f"No room named '{room_name}'")
     
     def handle_server_response(self, response):
         op = response['op']
@@ -174,6 +197,12 @@ class App(urwid.Pile):
             self.printfn(f'{response["user"]}: {response["MESSAGE"]}')
         elif op == OpCode.LOGIN:
             self.printfn(f'User {response["user"]} has logged in.')
+        elif op == OpCode.LIST_USERS:
+            self.printfn(f'USERS')
+            self.printfn(','.join(response['users']))
+        elif op == OpCode.LIST_ROOMS:
+            self.printfn(f'ROOMS')
+            self.printfn(','.join(response['rooms']))
         else:
             self.printfn(f'UKNOWN OPCODE {op}')
             self.printfn(json.dumps(response))
@@ -193,18 +222,22 @@ class App(urwid.Pile):
             }
         return (payload, None)
 
-    def list_users(self, _=''):
+    def list_users(self, room=''):
         payload = { 
             'op': OpCode.LIST_USERS,
+            'room': room,
             }
         return (payload, None)
 
     def join_room(self, room=''):
+        if room in [r.name for r in self.rooms]:
+            self.switch_current_room_by_name(room)
+            return
         payload = { 
             'op': OpCode.JOIN_ROOM,
-            'user':UUID,
-            'room':RID,
-            'new':1,
+            'user': self.user.username,
+            'room': room,
+            # 'new':1,
             }
         return (payload, None)
         
@@ -230,14 +263,6 @@ class App(urwid.Pile):
 
     def help_cmd(self, _=''):
         return (None, HELP_MSG)
-
-
-        
-class User:
-    def __init__(self, username, sockt):
-        self.username = username
-        # self.uuid = uuid
-        self.socket = sockt
 
 
 def run_client():
