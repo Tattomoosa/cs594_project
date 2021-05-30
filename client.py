@@ -79,13 +79,10 @@ class App(urwid.Pile):
                 print('Enter Username: ', end='')
                 username = input()
                 login_data = login(username)
-                print(login_data[1]) # attempt message
                 sockt.sendall(json.dumps(login_data[0]).encode()) # # login username
                 resp = sockt.recv(1024).decode()
-                print(resp)
                 resp = json.loads(resp)
                 user = User(resp['username'], sockt)
-                print(user)
                 return user
             except Exception as e:
                 raise e
@@ -233,6 +230,9 @@ class App(urwid.Pile):
             if room == self.current_room:
                 self.switch_current_room('default')
             self.rooms.remove(room)
+        
+        elif op == OpCode.ERR:
+            self.printfn(json.loads(response))
 
         else:
             self.printfn(f'UKNOWN OPCODE {op}')
@@ -293,7 +293,9 @@ class App(urwid.Pile):
 
     # TODO doesn't work
     def exit_app(self, msg=''):
-        exit()
+        import os
+        self.loop.stop()
+        os._exit(0)
 
     def help_cmd(self, _=''):
         return (None, HELP_MSG)
