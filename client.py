@@ -21,11 +21,20 @@ def listen_on_socket(sockt, printfn):
     while data := sockt.recv(1024):
         printfn(data.decode())
 
+class Room:
+
+    def __init__(self, messages: []):
+        self.messages = messages
+
 class App(urwid.Pile):
 
     def __init__(self, user):
         # setup urwid UI, self is main app container
-        self.chat_messages = [urwid.Text(WELCOME_MSG)]
+        self. rooms = []
+        self.chat_messages = [
+            urwid.Text(WELCOME_MSG),
+            f"You are logged in as '{user.username}'"
+            ]
         chat_list_walker = urwid.SimpleFocusListWalker(self.chat_messages)
         self.text_widget = urwid.ListBox(chat_list_walker)
         self.edit_widget = urwid.Edit(' > ')
@@ -80,7 +89,7 @@ def run_client():
             login_data = login(username)
             print(login_data[1]) # attempt message
             sockt.sendall(json.dumps(login_data[0]).encode()) # # login username
-            resp = sockt.recv(1024, 10)
+            resp = sockt.recv(1024)
             resp = resp.decode()
             print(resp)
             resp = json.loads(resp)
@@ -90,11 +99,9 @@ def run_client():
         except Exception as e:
             raise e
 
-
     user = None
     while not user:
         user = attempt_login()
-    print('LOGIN SUCCESFFUl')
 
     app = App(user)
     app.loop.run()
