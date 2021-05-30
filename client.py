@@ -32,10 +32,12 @@ Commands are prefixed with '/', which must be the first character of the input t
 TODO - more
 '''
 
-# runs on another 
-def listen_on_socket(sockt, printfn):
+# runs on another thread
+def listen_on_socket(sockt, responsefn):
+    # make sure app has chance to start main loop
+    sleep(0.1)
     while data := sockt.recv(1024):
-        printfn(data.decode())
+        responsefn(json.loads(data.decode()))
 
 def login(name=''):
     payload = { 
@@ -61,6 +63,7 @@ class App(urwid.Pile):
             print('Error connecting to server')
             exit()
 
+        # logs in before showing main interface
         def attempt_login():
             try:
                 print('Enter Username: ', end='')
@@ -112,7 +115,7 @@ class App(urwid.Pile):
         # setup socket listener
         self.user = user
         self.socket = user.socket
-        self.socket_thread = Thread(target=listen_on_socket, args=(self.socket, self.printfn))
+        self.socket_thread = Thread(target=listen_on_socket, args=(self.socket, self.handle_server_response))
         self.socket_thread.start()
 
     # handles app keypresses (global)
@@ -164,6 +167,16 @@ class App(urwid.Pile):
         self.current_room_index = room_index
         room = self.current_room
         self.text_widget.body = room.messages
+    
+    def handle_server_response(self, response):
+        op = response['op']
+        if op == OpCode.MESSAGE:
+            self.printfn(f'{response["user"]}: {response["MESSAGE"]}')
+        elif op == OpCode.LOGIN:
+            self.printfn(f'User {response["user"]} has logged in.')
+        else:
+            self.printfn(f'UKNOWN OPCODE {op}')
+            self.printfn(json.dumps(response))
 
     # COMMANDS operations
 
@@ -206,7 +219,7 @@ class App(urwid.Pile):
         payload = { 
             'op': OpCode.MESSAGE,
             'user': UUID,
-            'room': RID,
+            'room': self.current_room.name,
             'msg': msg,
             }
         return (payload, None)
@@ -217,6 +230,8 @@ class App(urwid.Pile):
 
     def help_cmd(self, _=''):
         return (None, HELP_MSG)
+
+
         
 class User:
     def __init__(self, username, sockt):
