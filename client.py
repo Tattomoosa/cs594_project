@@ -26,10 +26,9 @@ try:
             SERVER_ADDRESS = (ip, int(port))
         else:
             SERVER_ADDRESS = 'localhost', int(sys.argv[1])
-    else:
-        raise Argument
 except:
     print(USAGE)
+
 # temp
 UUID = 0
 RID = 0
