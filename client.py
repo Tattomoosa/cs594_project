@@ -23,7 +23,7 @@ def listen_on_socket(sockt, printfn):
 
 class App(urwid.Pile):
 
-    def __init__(self):
+    def __init__(self, user):
         # setup urwid UI, self is main app container
         self.chat_messages = [urwid.Text(WELCOME_MSG)]
         chat_list_walker = urwid.SimpleFocusListWalker(self.chat_messages)
@@ -33,9 +33,9 @@ class App(urwid.Pile):
         super(App, self).__init__([self.text_widget, (3, self.edit_box)], 1)
         self.loop = urwid.MainLoop(self)
 
-        # setup socket
-        self.socket = socket.socket(socket.AF_INET)
-        self.socket.connect(SERVER_ADDRESS)
+        # setup socket listener
+        self.user = user
+        self.socket = user.socket
         self.socket_thread = Thread(target=listen_on_socket, args=(self.socket, self.printfn))
         self.socket_thread.start()
 
@@ -58,8 +58,43 @@ class App(urwid.Pile):
         self.text_widget.set_focus(len(self.text_widget.body) - 1)
         self.loop.draw_screen()
 
+class User:
+    def __init__(self, username, uuid, sockt):
+        self.username = username
+        self.uuid = uuid
+        self.socket = sockt
+
+
 def run_client():
-    app = App()
+    try:
+        sockt = socket.socket(socket.AF_INET)
+        sockt.connect(SERVER_ADDRESS)
+    except:
+        print('Error connecting to server')
+        exit(1)
+
+    def attempt_login():
+        try:
+            print('Enter Username: ', end='')
+            username = input()
+            login_data = login(username)
+            print(login_data[0]) # attempt message
+            sockt.sendall(json.dumps(login_data[1]).encode()) # # login username
+            resp = sockt.recv(1024, 10)
+            resp = resp.decode()
+            print(resp)
+            resp = json.loads(resp)
+            user = User(resp['username'], resp['uuid'], sockt)
+            return user
+        except Exception as e:
+            raise e
+
+
+    user = None
+    while not user:
+        user = attempt_login()
+
+    app = App(user)
     app.loop.run()
     return
 
@@ -131,10 +166,10 @@ def message(msg=''):
     return (payload, None)
 
 # TODO doesn't work
-def exit_app(_=''):
-    pass
-    #raise urwid.ExitMainLoop("NOT WORKING")
-    # exit()
+def exit_app(msg=''):
+    payload = {
+        'op': 'EXIT'
+    }
 
 HELP_MSG = '''COMMANDS
 
@@ -161,6 +196,5 @@ COMMANDS = {
 
 
 if __name__ == '__main__':
-    # input_check(input())
     run_client()
     
