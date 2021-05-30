@@ -42,7 +42,6 @@ class Client():
 
 
 def send_all(message):
-    print("test log out")
     for client in client_list:
         client.socket.sendall(message.encode())
 
@@ -69,14 +68,14 @@ class IrcRequestHandler(socketserver.BaseRequestHandler):
     
     # called whenwhen client disconnects
     def finish(self):
-        for client in client_list:
-            send_all(f'User:{self.client.username} logged out')
+        send_all(f'User:{self.client.username} logged out')
         client_list.remove(self.client)
     
 def login(payload, client):
     print(f"Logging in User {payload['username']}")
     client.username = payload['username']
     message = {
+        'op': 'MESSAGE',
         'username':payload['username']
     }
     print(json.dumps(message))
@@ -101,7 +100,12 @@ def leave_room(payload):
     return
 
 def message(payload):
-    print('User requested to message')
+    message = {
+        'op': 'MESSAGE',
+        'user': 'username',
+        'room': 'default',
+        'MESSAGE': payload['message'],
+    }
     return
 
 def exit_app(payload):
