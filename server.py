@@ -41,9 +41,14 @@ class Client():
         self.rooms = []
 
 
+# Sends encoded JSON object to all clients
 def send_all(message):
+    message = json.dumps(message).encode()
     for client in client_list:
-        client.socket.sendall(message.encode())
+        client.socket.sendall(message)
+def response(client, message):
+    message = json.dumps(message).encode()
+    client.socket.sendall(message)
 
 class IrcRequestHandler(socketserver.BaseRequestHandler):
 
@@ -75,11 +80,11 @@ def login(payload, client):
     print(f"Logging in User {payload['username']}")
     client.username = payload['username']
     message = {
-        'op': 'MESSAGE',
+        'op': 'LOGIN',
         'username':payload['username']
     }
-    print(json.dumps(message))
-    client.socket.sendall(json.dumps(message).encode())
+    response(client, message)
+    send_all(message)
     return
 
 def list_rooms(payload):
@@ -106,6 +111,7 @@ def message(payload):
         'room': 'default',
         'MESSAGE': payload['message'],
     }
+    send_all(message)
     return
 
 def exit_app(payload):
