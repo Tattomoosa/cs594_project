@@ -28,8 +28,10 @@ Commands are prefixed with '/', which must be the first character of the input t
 /users [room] - List all users, or users in [room]
 /join [room] - Join room
 /leave room - Leave room
-
-TODO - more
+/exit - Exit program
+/quit - Exit program
+/help - Print this message
+/debug - Toggle debug information
 '''
 
 # runs on another thread
@@ -144,9 +146,14 @@ class App(urwid.Pile):
             super(App, self).keypress(size, key)
     
     # prints into chat scroll
-    def printfn(self, string):
+    def printfn(self, string, room=None):
+        if not room:
+            room = self.current_room
         new_text = urwid.Text(string)
-        self.text_widget.body.append(new_text)
+        # self.text_widget.body.append(new_text)
+        room.messages.append(new_text)
+        if room == self.current_room:
+            self.text_widget.body = room.messages
         self.text_widget.set_focus_valign('bottom')
         self.text_widget.set_focus(len(self.text_widget.body) - 1)
         self.loop.draw_screen()
@@ -177,6 +184,11 @@ class App(urwid.Pile):
     def current_room(self):
         return self.rooms[self.current_room_index]
     
+    def get_room_by_name(self, room_name):
+        for (i, name) in enumerate(self.rooms):
+            if name == room_name:
+                return self.rooms[i]
+    
     def set_current_room(self, room_index):
         self.current_room_index = room_index
         room = self.current_room
@@ -191,16 +203,32 @@ class App(urwid.Pile):
     
     def handle_server_response(self, response):
         op = response['op']
+
         if op == OpCode.MESSAGE:
-            self.printfn(f'{response["user"]}: {response["MESSAGE"]}')
+            message = f'{response["user"]}: {response["MESSAGE"]}'
+            if self.current_room.name == response['room']:
+                self.printfn(message)
+            else:
+                room = self.get_room_by_name(response['room'])
+                room.messages.append(message)
+
         elif op == OpCode.LOGIN:
-            self.printfn(f'User {response["user"]} has logged in.')
+            self.printfn(f'User {response["username"]} has logged in.')
         elif op == OpCode.LIST_USERS:
             self.printfn(f'USERS')
             self.printfn(','.join(response['users']))
         elif op == OpCode.LIST_ROOMS:
             self.printfn(f'ROOMS')
             self.printfn(','.join(response['rooms']))
+        elif op == OpCode.JOIN_ROOM:
+            if response["user"] == self.user.username:
+                room_name = response['room']
+                if room_name in self.rooms:
+                    self.switch_current_room_by_name(room_name)
+                else:
+                    self.rooms.append(Room(room_name, []))
+            else:
+                self.printfn(f'{response["user"]} has joined {response["room"]}')
         else:
             self.printfn(f'UKNOWN OPCODE {op}')
             self.printfn(json.dumps(response))
