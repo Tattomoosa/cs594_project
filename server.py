@@ -112,7 +112,7 @@ def list_users(payload, client):
     else:
         for c in client_list:
             if payload['room'] in c.rooms:
-                users += [client.username]
+                users += [c.username]
 
     message = {
         'op': OpCode.LIST_USERS,
