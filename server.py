@@ -131,7 +131,7 @@ def join_room(payload, client):
 
     message = {
         'op': OpCode.JOIN_ROOM,
-        'username': payload['username'],
+        'user': payload['user'],
         'new': newroom
     }
 
