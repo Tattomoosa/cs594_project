@@ -58,7 +58,7 @@ class IrcRequestHandler(socketserver.BaseRequestHandler):
 
     # called whenwhen client disconnects
     def finish(self):
-        broadcast_all(f'User:{self.client.username} logged out')
+        exit_app({},self.client)
         client_list.remove(self.client)
     
 def login(payload, client):
@@ -67,7 +67,8 @@ def login(payload, client):
     # if payload['username'] in client_list.username:
     if payload['username'] in [c.username for c in client_list]:
         message = {
-            'op': OpCode.ERR_NAME_EXISTS
+            'op': OpCode.ERR_NAME_EXISTS,
+            'user': payload['username']
         }
         broadcast(client, message)
         return
