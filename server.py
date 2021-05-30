@@ -8,6 +8,7 @@ import os
 from datetime import datetime
 import uuid
 import json
+from opcodes import OpCode
 
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8000
 SERVER_ADDRESS = 'localhost', PORT
@@ -27,6 +28,7 @@ Joined room
 
 
 client_list = []
+rooms_list = ['default', 'test', 'test2']
 
 #socket, UUID, USERNAME
 # dict {UUID: soccket, username}
@@ -80,33 +82,50 @@ def login(payload, client):
     print(f"Logging in User {payload['username']}")
     client.username = payload['username']
     message = {
-        'op': 'LOGIN',
+        'op': OpCode.LOGIN,
         'username':payload['username']
     }
     response(client, message)
     send_all(message)
     return
 
-def list_rooms(payload):
+def list_rooms(payload, client):
     print('User requested room list')
-    return
-
-def list_users(payload):
-
-    print('User requested user list')
-    return
-
-def join_room(payload):
-    print('User requested to join room')
-    return
-
-def leave_room(payload):
-    print('User requested leave room')
-    return
-
-def message(payload):
+    print(rooms_list)
     message = {
-        'op': 'MESSAGE',
+        'op': OpCode.LIST_ROOMS,
+        'rooms': rooms_list,
+    }
+    return
+
+def list_users(payload, client):
+    print('User requested user list')
+    users = []
+    for client in client_list:
+        users += [client.username]
+    message = {
+        'op': OpCode.LIST_USERS,
+        'users': users,
+    }
+    return
+
+def join_room(payload, client):
+    print('User requested to join room')
+    message = {
+        'op': OpCode.JOIN_ROOM,
+    }
+    return
+
+def leave_room(payload, client):
+    print('User requested leave room')
+    message = {
+        'op': OpCode.LEAVE_ROOM,
+    }
+    return
+
+def message(payload, client):
+    message = {
+        'op': OpCode.MESSAGE,
         'user': 'username',
         'room': 'default',
         'MESSAGE': payload['message'],
@@ -114,12 +133,17 @@ def message(payload):
     send_all(message)
     return
 
-def exit_app(payload):
+def exit_app(payload, client):
     print('User left')
+    # Remove user from rooms
     return
 
-def help_cmd(payload):
+def help_cmd(payload, client):
     print('User requested help')
+    message = {
+        'op': OpCode.LOGIN,
+        'username':payload['username']
+    }
     return
 
 COMMANDS = {    
