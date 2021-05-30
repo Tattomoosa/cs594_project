@@ -67,12 +67,6 @@ class IrcRequestHandler(socketserver.BaseRequestHandler):
             COMMANDS[data['op']](data, self.client)
             
 
-            #message = f"{self.client_address[0]}:{self.client_address[1]} -- {data.decode()}"
-            #print(f'{datetime.now()}::{message}')
-            #for client in client_list:
-                #client.socket.sendall(message.encode())
-            
-    
     # called whenwhen client disconnects
     def finish(self):
         send_all(f'User:{self.client.username} logged out')
@@ -95,6 +89,7 @@ def list_rooms(payload, client):
         'op': OpCode.LIST_ROOMS,
         'rooms': rooms_list,
     }
+    response(message)
     return
 
 def list_users(payload, client):
@@ -106,6 +101,7 @@ def list_users(payload, client):
         'op': OpCode.LIST_USERS,
         'users': users,
     }
+    response(message)
     return
 
 def join_room(payload, client):
