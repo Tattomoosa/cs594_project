@@ -142,7 +142,7 @@ def join_room(payload, client):
 
 def leave_room(payload, client):
     print('User requested leave room')
-
+    client.rooms.remove(payload['room'])
     message = {
         'op': OpCode.LEAVE_ROOM,
         'room': payload['room']

@@ -239,10 +239,10 @@ class App(urwid.Pile):
             }
         return (payload, None)
         
-    def leave_room(self, msg=''):
+    def leave_room(self, room=''):
         payload = { 
             'op': OpCode.LEAVE_ROOM,
-            'room':RID
+            'room': room
             }
         return (payload, None)
         
