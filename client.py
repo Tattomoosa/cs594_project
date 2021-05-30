@@ -185,8 +185,8 @@ class App(urwid.Pile):
         return self.rooms[self.current_room_index]
     
     def get_room_by_name(self, room_name):
-        for (i, name) in enumerate(self.rooms):
-            if name == room_name:
+        for (i, room) in enumerate(self.rooms):
+            if room.name == room_name:
                 return self.rooms[i]
     
     def set_current_room(self, room_index):
@@ -210,11 +210,8 @@ class App(urwid.Pile):
             if self.current_room.name == response['room']:
                 self.printfn(message)
             else:
-                room = self.get_room_by_name(response['room'])
-                try:
-                    room.messages.append(message)
-                except Exception as e:
-                    raise ValueError(f'ROOM IS {room}')
+                if room := self.get_room_by_name(response['room']):
+                    room.messages.append(urwid.Text(message))
 
         elif op == OpCode.LOGIN:
             self.printfn(f'User {response["username"]} has logged in.')
