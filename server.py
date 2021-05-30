@@ -52,8 +52,13 @@ class IrcRequestHandler(socketserver.BaseRequestHandler):
         # listen loop
         while data := self.request.recv(1024):
             data = json.loads(data.strip().decode())
-
-            COMMANDS[data['op']](data, self.client)
+            try:
+                COMMANDS[data['op']](data, self.client)
+            except:
+                message = {
+                    'op': OpCode.ERR_ILLEGAL_OP
+                }
+                broadcast(message)
             
 
     # called whenwhen client disconnects
@@ -68,6 +73,14 @@ def login(payload, client):
     if payload['username'] in [c.username for c in client_list]:
         message = {
             'op': OpCode.ERR_NAME_EXISTS,
+            'user': payload['username']
+        }
+        broadcast(client, message)
+        return
+
+    if len(payload['username']) > 32 or len(payload['username']) < 1:
+        message = {
+            'op': OpCode.ERR_ILLEGAL_NAME,
             'user': payload['username']
         }
         broadcast(client, message)
