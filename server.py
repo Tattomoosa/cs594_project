@@ -123,7 +123,7 @@ def message(payload, client):
         'op': OpCode.MESSAGE,
         'user': 'username',
         'room': 'default',
-        'MESSAGE': payload['message'],
+        'MESSAGE': payload['msg'],
     }
     send_all(message)
     return
