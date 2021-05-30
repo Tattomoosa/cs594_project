@@ -13,11 +13,36 @@ from opcodes import OpCode
 WELCOME_MSG = "Welcome to IRC!"
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8000
 SERVER_ADDRESS = 'localhost', PORT
+# temp
+UUID = 0
+RID = 0
+HELP_MSG = '''
+HELP
+
+COMMANDS
+
+Commands are prefixed with '/', which must be the first character of the input text.
+
+/login [username]
+        Login with username.
+
+/rooms
+        List rooms
+
+TODO - more
+'''
 
 # runs on another 
 def listen_on_socket(sockt, printfn):
     while data := sockt.recv(1024):
         printfn(data.decode())
+
+def login(name=''):
+    payload = { 
+        'op': OpCode.LOGIN,
+        'username':name,
+        }
+    return (payload, f'Attempting to log in as {name}...')
 
 class Room:
 
@@ -27,7 +52,47 @@ class Room:
 
 class App(urwid.Pile):
 
-    def __init__(self, user):
+    def __init__(self):
+        # attempt to connect to server socket
+        try:
+            sockt = socket.socket(socket.AF_INET)
+            sockt.connect(SERVER_ADDRESS)
+        except ConnectionRefusedError:
+            print('Error connecting to server')
+            exit()
+
+        def attempt_login():
+            try:
+                print('Enter Username: ', end='')
+                username = input()
+                login_data = login(username)
+                print(login_data[1]) # attempt message
+                sockt.sendall(json.dumps(login_data[0]).encode()) # # login username
+                resp = sockt.recv(1024).decode()
+                print(resp)
+                resp = json.loads(resp)
+                user = User(resp['username'], sockt)
+                print(user)
+                return user
+            except Exception as e:
+                raise e
+
+        user = None
+        while not user:
+            user = attempt_login()
+
+        self.commands = {    
+            '/login': self.login, 
+            '/rooms': self.list_rooms, 
+            '/users': self.list_users, 
+            '/join': self.join_room, 
+            '/leave': self.leave_room, 
+            '/message': self.message,
+            '/exit': self.exit_app,
+            '/quit': self.exit_app,
+            '/help': self.help_cmd,
+            }
+
         self.current_room_index = 0
 
         welcome_messages = [
@@ -55,8 +120,9 @@ class App(urwid.Pile):
         if key == 'enter':
             edit_text = self.edit_widget.get_edit_text()
             payload = self.input_check(edit_text)
-            self.printfn(f'SENDING: {payload}')
-            self.socket.sendall(json.dumps(payload).encode())
+            if payload:
+                self.printfn(f'SENDING: {payload}')
+                self.socket.sendall(json.dumps(payload).encode())
             self.edit_widget.edit_text = ''
         else:
             super(App, self).keypress(size, key)
@@ -75,17 +141,18 @@ class App(urwid.Pile):
             # This is kinda dirty but adding blank space to string so it can be split with single
             input+=" "
             command, msg = input.split(' ',1)
-            payload = {}
+            payload = None
             try:
-                payload, msg = COMMANDS[command](msg)
+                payload, msg = self.commands[command](msg)
                 if msg is not None:
                     self.printfn(msg)
-            except:
-                self.printfn("Bad Command")
-            jsonobject = json.dumps(payload, indent = 2)
-            self.printfn(jsonobject)
+            except KeyError:
+                self.printfn(f"Bad Command '{command}'")
+            # if payload:
+            #     jsonobject = json.dumps(payload, indent = 2)
+            #     self.printfn(jsonobject)
         else:
-            payload, _ = message(input)
+            payload, _ = self.message(input)
         
         return payload
     
@@ -93,11 +160,64 @@ class App(urwid.Pile):
     def current_room(self):
         return self.rooms[self.current_room_index]
     
-    def switch_room(self,room_index):
+    def switch_room(self, room_index):
         self.current_room_index = room_index
         room = self.current_room
         self.text_widget.body = room.messages
 
+    # COMMANDS operations
+
+    def login(self, name=''):
+        payload = { 
+            'op': OpCode.LOGIN,
+            'username':name,
+            }
+        return (payload, f'Attempting to log in as {name}...')
+
+    def list_rooms(self, _=''):
+        payload = {
+            'op': OpCode.LIST_ROOMS,
+            }
+        return (payload, None)
+
+    def list_users(self, _=''):
+        payload = { 
+            'op': OpCode.LIST_USERS,
+            }
+        return (payload, None)
+
+    def join_room(self, room=''):
+        payload = { 
+            'op': OpCode.JOIN_ROOM,
+            'user':UUID,
+            'room':RID,
+            'new':1,
+            }
+        return (payload, None)
+        
+    def leave_room(self, msg=''):
+        payload = { 
+            'op': OpCode.LEAVE_ROOM,
+            'room':RID
+            }
+        return (payload, None)
+        
+    def message(self, msg=''):
+        payload = { 
+            'op': OpCode.MESSAGE,
+            'user': UUID,
+            'room': RID,
+            'msg': msg,
+            }
+        return (payload, None)
+
+    # TODO doesn't work
+    def exit_app(self, msg=''):
+        exit()
+
+    def help_cmd(self, _=''):
+        return (None, HELP_MSG)
+        
 class User:
     def __init__(self, username, sockt):
         self.username = username
@@ -106,112 +226,9 @@ class User:
 
 
 def run_client():
-    try:
-        sockt = socket.socket(socket.AF_INET)
-        sockt.connect(SERVER_ADDRESS)
-    except:
-        print('Error connecting to server')
-        exit(1)
-
-    def attempt_login():
-        try:
-            print('Enter Username: ', end='')
-            username = input()
-            login_data = login(username)
-            print(login_data[1]) # attempt message
-            sockt.sendall(json.dumps(login_data[0]).encode()) # # login username
-            resp = sockt.recv(1024)
-            resp = resp.decode()
-            print(resp)
-            resp = json.loads(resp)
-            user = User(resp['username'], sockt)
-            print(user)
-            return user
-        except Exception as e:
-            raise e
-
-    user = None
-    while not user:
-        user = attempt_login()
-
-    app = App(user)
+    app = App()
     app.loop.run()
     return
-
-UUID = 0
-RID = 0
-
-
-def login(name=''):
-    payload = { 
-        'op': OpCode.LOGIN,
-        'username':name,
-        }
-    return (payload, f'Attempting to log in as {name}...')
-
-def list_rooms(_=''):
-    payload = {
-        'op': OpCode.LIST_ROOMS,
-        }
-    return (payload, None)
-
-def list_users(_=''):
-    payload = { 
-        'op': OpCode.LIST_USERS,
-        }
-    return (payload, None)
-
-def join_room(room=''):
-    payload = { 
-        'op': OpCode.JOIN_ROOM,
-        'user':UUID,
-        'room':RID,
-        'new':1,
-        }
-    return (payload, None)
-    
-def leave_room(msg=''):
-    payload = { 
-        'op': OpCode.LEAVE_ROOM,
-        'room':RID
-        }
-    return (payload, None)
-    
-def message(msg=''):
-    payload = { 
-        'op': OpCode.MESSAGE,
-        'user': UUID,
-        'room': RID,
-        'msg': msg,
-        }
-    return (payload, None)
-
-# TODO doesn't work
-def exit_app(msg=''):
-    exit()
-
-HELP_MSG = '''COMMANDS
-
-Commands are prefixed with '/', which must be the first character of the input text.
-
-/login [username] :
-/rooms
-'''
-
-def help_cmd(_=''):
-    return (None, HELP_MSG)
-
-COMMANDS = {    
-    '/login':login, 
-    '/rooms':list_rooms, 
-    '/users':list_users, 
-    '/join':join_room, 
-    '/leave':leave_room, 
-    '/message':message,
-    '/exit':exit_app,
-    '/quit':exit_app,
-    '/help':help_cmd,
-    }
 
 
 if __name__ == '__main__':
