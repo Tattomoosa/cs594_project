@@ -196,6 +196,8 @@ def whisper(payload, client):
         'room': f"{client.username}.{payload['target']}",
         'MESSAGE': payload['msg'],
     }
+    broadcast_room(message, message['room'])
+    return
 
 def exit_app(payload, client):
     message = {
