@@ -434,9 +434,15 @@ class App(urwid.Pile):
 
     def rsp_err_malformed(self, response):
         '''
-        RESPONSE command executed a response from the server is malformed
+        RESPONSE command executed when a response from the server is malformed
         '''
         self.printfn('SERVER ERROR: Received malformed request')
+
+    def rsp_err_illegal_whisper(self, response):
+        '''
+        RESPONSE command executed when client requested illegal whisper
+        '''
+        self.printfn('SERVER ERROR: Illegal whisper')
 
     def rsp_err(self, response):
         '''
@@ -528,9 +534,9 @@ class App(urwid.Pile):
         except:
             self.printfn('ERROR: Expected "/whisper [user] [message]"')
             return (None, None)
-        # if target == self.user.username:
-        #     self.printfn('ERROR: You cannot whisper yourself')
-        #     return (None, None)
+        if target == self.user.username:
+            self.printfn('ERROR: You cannot whisper yourself')
+            return (None, None)
         payload = { 
             'op': OpCode.WHISPER,
             'user': self.user.username,
