@@ -373,8 +373,9 @@ class App(urwid.Pile):
             else:
                 message = f'{response["sender"]} whispered you'
 
-        if room_name not in self.rooms:
+        if room_name not in [r.name for r in self.rooms]:
             self.rooms.append(Room(room_name, []))
+        room = self.get_room_by_name(room_name)
         self.printfn(message, room)
     
     def rsp_user_exit(self, response):
