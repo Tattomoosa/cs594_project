@@ -112,7 +112,6 @@ class App(urwid.Pile):
         '''
         # attempt to connect to server socket
         sockt = socket.socket(socket.AF_INET)
-        sockt.settimeout(.5)
         try:
             sockt.connect(SERVER_ADDRESS)
         except ConnectionRefusedError:
@@ -167,6 +166,7 @@ class App(urwid.Pile):
             '/join': self.join_room, 
             '/leave': self.leave_room, 
             '/message': self.message,
+            '/whisper': self.whisper,
             '/exit': self.exit_app,
             '/quit': self.exit_app,
             '/help': self.help_cmd,
@@ -420,7 +420,7 @@ class App(urwid.Pile):
             return (None, None)
         target = msg.split()[0] 
         payload = { 
-            'op': OpCode.MESSAGE,
+            'op': OpCode.WHISPER,
             'user': UUID,
             'target': target,
             'room': f"{UUID}.{target}",
