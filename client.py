@@ -47,6 +47,7 @@ COMMANDS
 Commands are prefixed with '/', which must be the first character of the input text.
 
 /login [username] - Login with [username]
+/whisper [username] [message] - send [username] [message] in private room
 /rooms - List rooms
 /users [room] - List all users, or users in [room]
 /join [room] - Join room
@@ -160,23 +161,36 @@ class App(urwid.Pile):
 
         self.debug = False
         self.commands = {    
-            '/login': self.login, 
-            '/rooms': self.list_rooms, 
-            '/users': self.list_users, 
-            '/join': self.join_room, 
-            '/leave': self.leave_room, 
-            '/message': self.message,
-            '/whisper': self.whisper,
-            '/exit': self.exit_app,
-            '/quit': self.exit_app,
-            '/help': self.help_cmd,
+            '/login': self.cmd_login, 
+            '/rooms': self.cmd_list_rooms, 
+            '/users': self.cmd_list_users, 
+            '/join': self.cmd_join_room, 
+            '/leave': self.cmd_leave_room, 
+            '/message': self.cmd_message,
+            '/whisper': self.cmd_whisper,
+            '/exit': self.cmd_exit_app,
+            '/quit': self.cmd_exit_app,
+            '/help': self.cmd_help_cmd,
             '/debug': self.toggle_debug,
             }
 
-        # self.responses = {
-        #     OpCode.MESSAGE: onmessage,
-
-        # }
+        self.responses = {
+            OpCode.MESSAGE: self.rsp_message,
+            OpCode.LOGIN: self.rsp_login,
+            OpCode.LIST_USERS: self.rsp_list_users,
+            OpCode.LIST_ROOMS: self.rsp_list_rooms,
+            OpCode.JOIN_ROOM: self.rsp_join_room,
+            OpCode.WHISPER: self.rsp_whisper,
+            OpCode.USER_EXIT: self.rsp_user_exit,
+            OpCode.LEAVE_ROOM: self.rsp_leave_room,
+            OpCode.ERR_TIMEOUT: self.rsp_err_timeout,
+            OpCode.ERR_ILLEGAL_OP: self.rsp_err_illegal_op,
+            OpCode.ERR_NAME_EXISTS  : self.rsp_err_name_exists,
+            OpCode.ERR_ILLEGAL_NAME  : self.rsp_err_illegal_name,
+            OpCode.ERR_ILLEGAL_MSG  : self.rsp_err_illegal_msg,
+            OpCode.ERR_MALFORMED  : self.rsp_err_malformed,
+            OpCode.ERR  : self.rsp_err,
+        }
 
 
         welcome_messages = [
@@ -194,7 +208,7 @@ class App(urwid.Pile):
         super(App, self).__init__([self.text_widget, (3, self.edit_box)], 1)
         self.loop = urwid.MainLoop(self)
         # write to this pipe to quit the application
-        self.quit_pipe = self.loop.watch_pipe(self.exit_app)
+        self.quit_pipe = self.loop.watch_pipe(self.cmd_exit_app)
 
         # setup socket listener
         self.user = user
@@ -246,7 +260,7 @@ class App(urwid.Pile):
             except KeyError:
                 self.printfn(f"Bad Command '{command}'")
         else:
-            payload, _ = self.message(input)
+            payload, _ = self.cmd_message(input)
         
         return payload
     
@@ -271,89 +285,10 @@ class App(urwid.Pile):
             self.printfn('ERROR: Malformed response from server:')
             self.printfn(response)
             return
-
-        if op == OpCode.MESSAGE:
-            message = f'{response["user"]}: {response["MESSAGE"]}'
-            if self.current_room.name == response['room']:
-                self.printfn(message)
-            else:
-                if room := self.get_room_by_name(response['room']):
-                    room.messages.append(urwid.Text(message))
-
-        elif op == OpCode.LOGIN:
-            self.printfn(f'User {response["username"]} has logged in.')
-
-        elif op == OpCode.LIST_USERS:
-            self.printfn(f'USERS')
-            self.printfn(','.join(response['users']))
-
-        elif op == OpCode.LIST_ROOMS:
-            self.printfn(f'ROOMS')
-            self.printfn(','.join(response['rooms']))
-
-        elif op == OpCode.JOIN_ROOM:
-            if response["user"] == self.user.username:
-                room_name = response['room']
-                if room_name not in self.rooms:
-                    self.rooms.append(Room(room_name, []))
-                self.switch_current_room(room_name)
-                self.printfn(f'Joined room "{response["room"]}"')
-            else:
-                self.printfn(f'{response["user"]} has joined {response["room"]}')
         
-        elif op == OpCode.WHISPER:
-            room = response["room"]
-            if room == self.current_room:
-                message = f'{response["user"]}: {response["MESSAGE"]}'
-                self.printfn(message)
-            else:
-                if response['sender'] == self.user.username:
-                    message = f'You whispered {response["target"]}'
-                else:
-                    message = f'response["sender"] whispered you'
-                self.prinfn(message)
-            if room := self.get_room_by_name(response['room']):
-                room.messages.append(urwid.Text(message))
-            else:
-                self.rooms.append(Room(room, []))
-                room.messages.append(urwid.Text(message))
-            return
-        
-        elif op == OpCode.USER_EXIT:
-            self.printfn(f'''User '{response["user"]}' has logged off''')
-        
-        elif op == OpCode.ERR_TIMEOUT:
-            os.write(self.quit_pipe, 'Server timed out'.encode())
-        
-        elif op == OpCode.LEAVE_ROOM:
-            room_name = response["room"]
-            if room_name == 'default':
-                self.printfn("Leaving room 'default' is not allowed")
-                return
-            room = self.get_room_by_name(room_name)
-            if room == self.current_room:
-                self.switch_current_room('default')
-            self.rooms.remove(room)
-        
-        elif op == OpCode.ERR_ILLEGAL_OP:
-            self.printfn('SERVER ERROR: Illegal Operation')
-
-        elif op == OpCode.ERR_NAME_EXISTS:
-            self.printfn('SERVER ERROR: Name exists')
-
-        elif op == OpCode.ERR_ILLEGAL_NAME:
-            self.printfn('SERVER ERROR: Illegal Name')
-
-        elif op == OpCode.ERR_ILLEGAL_MSG:
-            self.printfn('SERVER ERROR: Illegal Message')
-
-        elif op == OpCode.ERR_ILLEGAL_MSG:
-            self.printfn('SERVER ERROR: Received malformed request')
-
-        elif op == OpCode.ERR:
-            self.printfn(json.loads(response))
-
-        else:
+        try:
+            self.responses[op](response)
+        except:
             self.printfn(f'UKNOWN OPCODE {op}')
             self.printfn(json.dumps(response))
         
@@ -362,31 +297,112 @@ class App(urwid.Pile):
     # RESPONSE operations
     # ==========================================================================
 
-    # TODO
+    def rsp_message(self, response):
+        message = f'{response["user"]}: {response["MESSAGE"]}'
+        if self.current_room.name == response['room']:
+            self.printfn(message)
+        else:
+            if room := self.get_room_by_name(response['room']):
+                room.messages.append(urwid.Text(message))
+    
+    def rsp_login(self, response):
+        self.printfn(f'User {response["username"]} has logged in.')
+    
+    def rsp_list_users(self, response):
+        self.printfn(f'USERS')
+        self.printfn(','.join(response['users']))
+    
+    def rsp_list_rooms(self, response):
+        self.printfn(f'ROOMS')
+        self.printfn(','.join(response['rooms']))
+    
+    def rsp_join_room(self, response):
+        if response["user"] == self.user.username:
+            room_name = response['room']
+            if room_name not in self.rooms:
+                self.rooms.append(Room(room_name, []))
+            self.switch_current_room(room_name)
+            self.printfn(f'Joined room "{response["room"]}"')
+        else:
+            self.printfn(f'{response["user"]} has joined {response["room"]}')
+
+    def rsp_whisper(self, response):
+        room = response["room"]
+        if room == self.current_room:
+            message = f'{response["user"]}: {response["MESSAGE"]}'
+            self.printfn(message)
+        else:
+            if response['sender'] == self.user.username:
+                message = f'You whispered {response["target"]}'
+            else:
+                message = f'response["sender"] whispered you'
+            self.printfn(message)
+        if room := self.get_room_by_name(response['room']):
+            room.messages.append(urwid.Text(message))
+        else:
+            self.rooms.append(Room(room, []))
+            room.messages.append(urwid.Text(message))
+        return
+    
+    def rsp_user_exit(self, response):
+        self.printfn(f'''User '{response["user"]}' has logged off''')
+    
+    def rsp_leave_room(self, response):
+        room_name = response["room"]
+        if room_name == 'default':
+            self.printfn("Leaving room 'default' is not allowed")
+            return
+        room = self.get_room_by_name(room_name)
+        if room == self.current_room:
+            self.switch_current_room('default')
+        self.rooms.remove(room)
+    
+    def rsp_err_timeout(self, response):
+        os.write(self.quit_pipe, 'Server timed out'.encode())
+    
+    def rsp_err_illegal_op(self, response):
+        self.printfn('SERVER ERROR: Illegal Operation')
+
+    def rsp_err_name_exists(self, response):
+        self.printfn('SERVER ERROR: Name exists')
+
+    def rsp_err_illegal_name(self, response):
+        self.printfn('SERVER ERROR: Illegal Name')
+
+    def rsp_err_illegal_msg(self, response):
+        self.printfn('SERVER ERROR: Illegal Message')
+
+    def rsp_err_malformed(self, response):
+        self.printfn('SERVER ERROR: Received malformed request')
+
+    def rsp_err(self, response):
+        self.printfn(json.loads(response))
+
+
 
     # ==========================================================================
     # COMMANDS operations
     # ==========================================================================
 
-    def login(self, name=''):
+    def cmd_login(self, name=''):
         payload = { 
             'op': OpCode.LOGIN,
             'username':name,
             }
         return (payload, f'Attempting to log in as {name}...')
 
-    def list_rooms(self, _=''):
+    def cmd_list_rooms(self, _=''):
         payload = { 'op': OpCode.LIST_ROOMS, }
         return (payload, None)
 
-    def list_users(self, room=''):
+    def cmd_list_users(self, room=''):
         payload = { 
             'op': OpCode.LIST_USERS,
             'room': room,
             }
         return (payload, None)
 
-    def join_room(self, room=''):
+    def cmd_join_room(self, room=''):
         if room in [r.name for r in self.rooms]:
             self.switch_current_room(room)
             return (None, f'Switched to room {room}')
@@ -397,14 +413,14 @@ class App(urwid.Pile):
             }
         return (payload, None)
         
-    def leave_room(self, room=''):
+    def cmd_leave_room(self, room=''):
         payload = { 
             'op': OpCode.LEAVE_ROOM,
             'room': room
             }
         return (payload, None)
         
-    def message(self, msg=''):
+    def cmd_message(self, msg=''):
         if msg == '':
             return (None, None)
         payload = { 
@@ -415,7 +431,7 @@ class App(urwid.Pile):
             }
         return (payload, None)
 
-    def whisper(self, msg=''):
+    def cmd_whisper(self, msg=''):
         if msg == '':
             return (None, None)
         target = msg.split()[0] 
@@ -429,14 +445,14 @@ class App(urwid.Pile):
         return (payload, None)
 
     # TODO doesn't work
-    def exit_app(self, msg=''):
+    def cmd_exit_app(self, msg=''):
         global exit_msg
         if type(msg) == bytes:
             msg = msg.decode()
         exit_msg = msg
         raise urwid.ExitMainLoop()
 
-    def help_cmd(self, _=''):
+    def cmd_help_cmd(self, _=''):
         return (None, HELP_MSG)
 
 
