@@ -1,5 +1,9 @@
 #! /usr/bin/env python
 
+'''
+An IRC Chat Client
+'''
+
 from json.decoder import JSONDecodeError
 import os
 from server import whisper
@@ -26,6 +30,7 @@ Usage: {sys.argv[0]} [address]
 '''
 
 SERVER_ADDRESS = 'localhost', 8000
+# parse arguments - takes either a port like "8000" or IP:port like "localhost:8000"
 try:
     if len(sys.argv) > 1:
         if ':' in sys.argv[1]:
@@ -36,10 +41,10 @@ try:
 except:
     print(USAGE)
 
+# prints on exit. may be modified by program state
 exit_msg = 'Exited'
-# temp
-UUID = 0
-RID = 0
+
+# prints when /help is invoked
 HELP_MSG = '''
 HELP
 
@@ -59,8 +64,10 @@ Commands are prefixed with '/', which must be the first character of the input t
 /debug - Toggle debug information
 '''
 
-# logs in before showing main interface
 def attempt_login(sockt):
+    '''
+    Gets username and logs in before showing main interface
+    '''
     try:
         print('Enter Username: ', end='')
         username = input()
@@ -73,9 +80,11 @@ def attempt_login(sockt):
             opcode = resp['op']
             if opcode != OpCode.LOGIN:
 
+                # we don't care about heartbeats yet
                 if opcode == OpCode.HEART_BEAT:
                     continue
                     
+                # username errors
                 if opcode == OpCode.ERR_NAME_EXISTS:
                     print('ERROR: Username exists')
                 elif opcode == OpCode.ERR_ILLEGAL_NAME:
@@ -98,6 +107,9 @@ def attempt_login(sockt):
 
 # runs on another thread
 def listen_on_socket(sockt, responsefn):
+    '''
+    Listens for server messages on a separate thread
+    '''
     # make sure app has chance to start main loop
     sleep(0.1)
     sockt.settimeout(TIMEOUT_TIME)
@@ -107,6 +119,8 @@ def listen_on_socket(sockt, responsefn):
 
             if len(read_s):
                 data = sockt.recv(1024)
+
+                # when server disconnects, read_s gets an empty bytestring
                 if not len(data):
                     responsefn({ 'op': OpCode.ERR_TIMEOUT })
                     return
@@ -114,9 +128,14 @@ def listen_on_socket(sockt, responsefn):
                     data = json.loads(data.decode())
                 except JSONDecodeError:
                     raise ValueError('JSON decoding failed. Data is {data}')
+
+                # no need to tell main thread about heartbeats,
+                # we don't care unless they stop coming
                 if data['op'] == OpCode.HEART_BEAT:
                     continue
+
                 responsefn(data)
+
     # signal works just fine in a thread, but yells at us that it can't be in the
     # main thread and throws a ValueError only when the server disconnects.
     # TODO better way??
@@ -136,11 +155,18 @@ def login(name=''):
         
 
 class User:
+    '''
+    Represents a user
+    '''
+
     def __init__(self, username, sockt):
         self.username = username
         self.socket = sockt
 
 class Room:
+    '''
+    Represents a room
+    '''
 
     def __init__(self, name, messages=[]):
         self.name = name
@@ -161,11 +187,13 @@ class App(urwid.Pile):
             print('Error connecting to server')
             exit()
 
+        # Login before launching TUI
         user = None
         while not user:
             user = attempt_login(sockt)
 
         self.debug = False
+        # Commands that either send server requests or print information
         self.commands = {    
             '/login': self.cmd_login, 
             '/rooms': self.cmd_list_rooms, 
@@ -180,6 +208,7 @@ class App(urwid.Pile):
             '/debug': self.toggle_debug,
             }
 
+        # Handles responding to server messages
         self.responses = {
             OpCode.MESSAGE: self.rsp_message,
             OpCode.LOGIN: self.rsp_login,
@@ -202,8 +231,10 @@ class App(urwid.Pile):
             urwid.Text(WELCOME_MSG),
             urwid.Text(f"You are logged in as '{user.username}'")
         ]
-        self.rooms = [Room('default', welcome_messages)]
-        self.current_room = self.rooms[0]
+        # join default room automatically
+        default_room = Room('default', welcome_messages)
+        self.rooms = [default_room]
+        self.current_room = default_room
 
         # setup urwid UI, self is main app container
         chat_list_walker = urwid.SimpleFocusListWalker(self.current_room.messages)
@@ -222,11 +253,16 @@ class App(urwid.Pile):
         self.socket_thread.start()
     
     def toggle_debug(self, _=''):
+        '''
+        Toggles debug mode and prints a notification
+        '''
         self.debug = not self.debug
         return (None, f"DEBUG IS [{'ON' if self.debug else 'OFF'}]")
 
-    # handles app keypresses (global)
     def keypress(self, size, key):
+        '''
+        Handles app keypresses (globally)
+        '''
         if key == 'enter':
             edit_text = self.edit_widget.get_edit_text()
             payload = self.input_check(edit_text)
@@ -276,11 +312,17 @@ class App(urwid.Pile):
         return payload
     
     def get_room_by_name(self, room_name):
+        '''
+        Returns a room from room list by name
+        '''
         for (i, room) in enumerate(self.rooms):
             if room.name == room_name:
                 return self.rooms[i]
     
-    def switch_current_room(self, room_name):
+    def switch_current_room_by_name(self, room_name):
+        '''
+        Switches the current (visible) room
+        '''
         for room in self.rooms:
             if room.name == room_name:
                 self.current_room = room
@@ -359,7 +401,7 @@ class App(urwid.Pile):
             room_name = response['room']
             if room_name not in [r.name for r in self.rooms]:
                 self.rooms.append(Room(room_name, []))
-            self.switch_current_room(room_name)
+            self.switch_current_room_by_name(room_name)
             self.printfn(f'Joined room "{response["room"]}"')
         else:
             self.printfn(f'{response["user"]} has joined {response["room"]}')
@@ -400,7 +442,7 @@ class App(urwid.Pile):
             self.printfn("Leaving room 'default' is not allowed")
         room = self.get_room_by_name(room_name)
         if room == self.current_room:
-            self.switch_current_room('default')
+            self.switch_current_room_by_name('default')
         self.rooms.remove(room)
     
     def rsp_err_timeout(self, response):
@@ -489,7 +531,7 @@ class App(urwid.Pile):
         COMMAND request to join room
         '''
         if room in [r.name for r in self.rooms]:
-            self.switch_current_room(room)
+            self.switch_current_room_by_name(room)
             return (None, f'Switched to room {room}')
         payload = { 
             'op': OpCode.JOIN_ROOM,
@@ -567,6 +609,9 @@ class App(urwid.Pile):
 
 
 def run_client():
+    '''
+    Runs the client application and cleans up upon quitting
+    '''
     app = App()
     app.loop.run()
     print(exit_msg)
