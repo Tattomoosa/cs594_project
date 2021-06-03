@@ -92,6 +92,13 @@ def login(payload, client):
         }
         broadcast(client, message)
         return
+    elif '.' in payload['username']:
+        message = {
+            'op': OpCode.ERR_ILLEGAL_NAME,
+            'user': payload['username']
+        }
+        broadcast(client, message)
+        return
 
     if len(payload['username']) > 32 or len(payload['username']) < 1:
         message = {
@@ -181,6 +188,15 @@ def message(payload, client):
     broadcast_room(message, payload['room'])
     return
 
+def whisper(payload, client):
+    message = {
+        'op': OpCode.WHISPER,
+        'sender': client.username,
+        'target':  payload['target'],
+        'room': f"{client.username}.{payload['target']}",
+        'MESSAGE': payload['msg'],
+    }
+
 def exit_app(payload, client):
     message = {
         'op': OpCode.USER_EXIT,
@@ -205,6 +221,7 @@ COMMANDS = {
     OpCode.LEAVE_ROOM:leave_room, 
     OpCode.MESSAGE:message,
     OpCode.USER_EXIT:exit_app,
+    OpCode.WHISPER:whisper,
     }
 
 if __name__ == '__main__':
