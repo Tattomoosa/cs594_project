@@ -5,7 +5,9 @@ import socketserver
 import signal
 import sys
 import os
+from time import sleep
 from datetime import datetime
+from threading import Thread
 import uuid
 import json
 from opcodes import OpCode
@@ -40,6 +42,17 @@ def broadcast_room(message, room):
     for client in client_list:
         if room in client.rooms:
             broadcast(client, message)
+
+def heart_beat():
+    while True:
+        sleep(1)
+        print("Bump bump")
+        message = {
+            'op': OpCode.HEART_BEAT,
+        }
+        broadcast_all(message)
+
+    
 
 class IrcRequestHandler(socketserver.BaseRequestHandler):
 
@@ -199,4 +212,7 @@ if __name__ == '__main__':
 
         # socket would fail when previous run was killed if we didn't reuse address
         server.allow_reuse_address = True
+        thread = Thread(target=heart_beat, name='thread-1')
+        thread.start()
+
         server.serve_forever()
