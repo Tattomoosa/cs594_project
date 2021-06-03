@@ -58,6 +58,43 @@ Commands are prefixed with '/', which must be the first character of the input t
 /debug - Toggle debug information
 '''
 
+# logs in before showing main interface
+def attempt_login(sockt):
+    try:
+        print('Enter Username: ', end='')
+        username = input()
+        login_data = login(username)
+        # TODO this clears any hearbeats -- we can DO BETTER somehow ??
+        _ = sockt.recv(1024)
+        sockt.sendall(json.dumps(login_data[0]).encode()) # # login username
+        while resp := sockt.recv(1024).decode():
+            resp = json.loads(resp)
+            opcode = resp['op']
+            if opcode != OpCode.LOGIN:
+
+                if opcode == OpCode.HEART_BEAT:
+                    continue
+                    
+                if opcode == OpCode.ERR_NAME_EXISTS:
+                    print('ERROR: Username exists')
+                elif opcode == OpCode.ERR_ILLEGAL_NAME:
+                    print('ERROR: Username is illegal')
+                else:
+                    print(f'OPCODE: {opcode:#x}')
+                    print(f'{resp}')
+                    continue
+
+                return None
+
+            user = User(resp['username'], sockt)
+            return user
+    except TimeoutError as e:
+        print('Connection timed out.')
+        exit()
+    except Exception as e:
+        raise e
+
+
 # runs on another thread
 def listen_on_socket(sockt, responsefn):
     # make sure app has chance to start main loop
@@ -119,45 +156,9 @@ class App(urwid.Pile):
             print('Error connecting to server')
             exit()
 
-        # logs in before showing main interface
-        def attempt_login():
-            try:
-                print('Enter Username: ', end='')
-                username = input()
-                login_data = login(username)
-                # TODO this clears any hearbeats -- we can DO BETTER somehow ??
-                _ = sockt.recv(1024)
-                sockt.sendall(json.dumps(login_data[0]).encode()) # # login username
-                while resp := sockt.recv(1024).decode():
-                    resp = json.loads(resp)
-                    opcode = resp['op']
-                    if opcode != OpCode.LOGIN:
-
-                        if opcode == OpCode.HEART_BEAT:
-                            continue
-                            
-                        if opcode == OpCode.ERR_NAME_EXISTS:
-                            print('ERROR: Username exists')
-                        elif opcode == OpCode.ERR_ILLEGAL_NAME:
-                            print('ERROR: Username is illegal')
-                        else:
-                            print(f'OPCODE: {opcode:#x}')
-                            print(f'{resp}')
-                            continue
-
-                        return None
-
-                    user = User(resp['username'], sockt)
-                    return user
-            except TimeoutError as e:
-                print('Connection timed out.')
-                exit()
-            except Exception as e:
-                raise e
-
         user = None
         while not user:
-            user = attempt_login()
+            user = attempt_login(sockt)
 
         self.debug = False
         self.commands = {    
@@ -303,7 +304,7 @@ class App(urwid.Pile):
             self.printfn(message)
         else:
             if room := self.get_room_by_name(response['room']):
-                room.messages.append(urwid.Text(message))
+                self.printfn(message, room)
     
     def rsp_login(self, response):
         self.printfn(f'User {response["username"]} has logged in.')
