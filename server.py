@@ -199,6 +199,9 @@ def whisper(payload, client):
         broadcast(client,message)
         return
 
+    if payload['room'] not in client.rooms:
+        client.rooms += [payload['room']]
+
     message = {
         'op': OpCode.WHISPER,
         'sender': client.username,
@@ -210,7 +213,10 @@ def whisper(payload, client):
     matching = [c for c in client_list if c.username == payload['target']]
     if len(matching) > 0:
         reciever = matching[0]
+        if payload['room'] not in reciever.rooms:
+            reciever.rooms += [payload['room']]
         broadcast( reciever,message)
+
     return
 
 def exit_app(payload, client):
