@@ -22,3 +22,4 @@ class OpCode:
     ERR_ILLEGAL_MSG = 0x15
     ERR_MALFORMED = 0x16
     ERR_TIMEOUT = 0x17
+    ERR_ILLEGAL_WISP = 0x18
