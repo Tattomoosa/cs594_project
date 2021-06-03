@@ -1,5 +1,6 @@
 #! /usr/bin/env python
 
+from json.decoder import JSONDecodeError
 import os
 from server import whisper
 import socket
@@ -109,7 +110,10 @@ def listen_on_socket(sockt, responsefn):
                 if not len(data):
                     responsefn({ 'op': OpCode.ERR_TIMEOUT })
                     return
-                data = json.loads(data.decode())
+                try:
+                    data = json.loads(data.decode())
+                except JSONDecodeError:
+                    raise ValueError('JSON decoding failed. Data is {data}')
                 if data['op'] == OpCode.HEART_BEAT:
                     continue
                 responsefn(data)
@@ -301,8 +305,7 @@ class App(urwid.Pile):
         try:
             respond_fn = self.responses[op]
         except KeyError:
-            self.printfn(f'UNKNOWN OPCODE {op:#x}')
-            self.printfn(json.dumps(response))
+            raise ValueError(f'UNKOWN OPCODE {op:#x} SERVER RESPONSE {json.dumps(response)}')
         
         if self.debug:
             self.printfn(f'RECEIVING: {json.dumps(response)}')
@@ -310,8 +313,7 @@ class App(urwid.Pile):
         if respond_fn:
             respond_fn(response)
         else:
-            print(response)
-            raise ValueError('Respond fn is None')
+            raise ValueError(f'Respond fn is None -- OPCODE: {op:#x}, Response: {response}')
         
         
 
@@ -526,6 +528,9 @@ class App(urwid.Pile):
         except:
             self.printfn('ERROR: Expected "/whisper [user] [message]"')
             return (None, None)
+        # if target == self.user.username:
+        #     self.printfn('ERROR: You cannot whisper yourself')
+        #     return (None, None)
         payload = { 
             'op': OpCode.WHISPER,
             'user': self.user.username,
