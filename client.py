@@ -289,7 +289,7 @@ class App(urwid.Pile):
         
         try:
             self.responses[op](response)
-        except:
+        except KeyError:
             self.printfn(f'UKNOWN OPCODE {op}')
             self.printfn(json.dumps(response))
         
