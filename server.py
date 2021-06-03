@@ -125,6 +125,11 @@ def list_rooms(payload, client):
 
     rooms = list(set(rooms))
 
+    for room in rooms:
+        if '.' in room:
+            if client.username not in room:
+                rooms.remove(room)
+
     message = {
         'op': OpCode.LIST_ROOMS,
         'rooms': rooms,
