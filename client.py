@@ -55,10 +55,10 @@ def listen_on_socket(sockt, responsefn):
     try:
         # make sure app has chance to start main loop
         sleep(0.1)
-        sockt.settimeout(5)
+        sockt.settimeout(TIMEOUT_TIME)
         while data := sockt.recv(1024):
             data = json.loads(data.decode())
-            if data.op == OpCode.HEART_BEAT:
+            if data['op'] == OpCode.HEART_BEAT:
                 continue
             responsefn(data)
     except TimeoutError:
@@ -96,6 +96,7 @@ class App(urwid.Pile):
         # attempt to connect to server socket
         try:
             sockt = socket.socket(socket.AF_INET)
+            sockt.settimeout(TIMEOUT_TIME)
             sockt.connect(SERVER_ADDRESS)
         except ConnectionRefusedError:
             print('Error connecting to server')
@@ -108,17 +109,27 @@ class App(urwid.Pile):
                 username = input()
                 login_data = login(username)
                 sockt.sendall(json.dumps(login_data[0]).encode()) # # login username
-                resp = sockt.recv(1024).decode()
-                resp = json.loads(resp)
-                if resp['op'] != OpCode.LOGIN:
-                    if resp['op'] == OpCode.ERR_NAME_EXISTS:
-                        print('ERROR: Username exists')
-                    elif resp['op'] == OpCode.ERR_ILLEGAL_NAME:
-                        print('ERROR: Username is illegal')
-                    return None
+                while resp := sockt.recv(1024).decode():
+                    resp = json.loads(resp)
+                    opcode = resp['op']
+                    if opcode != OpCode.LOGIN:
 
-                user = User(resp['username'], sockt)
-                return user
+                        if opcode == OpCode.HEART_BEAT:
+                            continue
+                            
+                        if opcode == OpCode.ERR_NAME_EXISTS:
+                            print('ERROR: Username exists')
+                        elif opcode == OpCode.ERR_ILLEGAL_NAME:
+                            print('ERROR: Username is illegal')
+                        else:
+                            print(f'OPCODE: {opcode:#x}')
+                            print(f'{resp}')
+                            continue
+
+                        return None
+
+                    user = User(resp['username'], sockt)
+                    return user
             except Exception as e:
                 raise e
 

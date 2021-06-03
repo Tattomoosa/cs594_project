@@ -55,6 +55,8 @@ class IrcRequestHandler(socketserver.BaseRequestHandler):
             try:
                 COMMANDS[data['op']](data, self.client)
             except:
+                print('ILLEGAL OPERATION:')
+                print(data)
                 message = {
                     'op': OpCode.ERR_ILLEGAL_OP
                 }
@@ -183,15 +185,13 @@ def help_cmd(payload, client):
     return
 
 COMMANDS = {    
-    'LOGIN':login, 
-    'LIST_ROOMS':list_rooms, 
-    'LIST_USERS':list_users, 
-    'JOIN_ROOM':join_room, 
-    'LEAVE_ROOM':leave_room, 
-    'MESSAGE':message,
-    'EXIT':exit_app,
-    'EXIT':exit_app,
-    '/help':help_cmd,
+    OpCode.LOGIN:login, 
+    OpCode.LIST_ROOMS:list_rooms, 
+    OpCode.LIST_USERS:list_users, 
+    OpCode.JOIN_ROOM:join_room, 
+    OpCode.LEAVE_ROOM:leave_room, 
+    OpCode.MESSAGE:message,
+    OpCode.USER_EXIT:exit_app,
     }
 
 if __name__ == '__main__':
