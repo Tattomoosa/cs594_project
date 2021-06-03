@@ -310,6 +310,7 @@ class App(urwid.Pile):
         if respond_fn:
             respond_fn(response)
         else:
+            print(response)
             raise ValueError('Respond fn is None')
         
         
