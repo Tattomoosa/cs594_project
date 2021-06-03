@@ -515,7 +515,13 @@ class App(urwid.Pile):
         '''
         if msg == '':
             return (None, None)
-        target, msg = msg.split(" ", 1) 
+        
+        target = None
+        try:
+            target, msg = msg.split(" ", 1) 
+        except:
+            self.printfn('ERROR: Expected "/whisper [user] [message]"')
+            return (None, None)
         payload = { 
             'op': OpCode.WHISPER,
             'user': self.user.username,
