@@ -12,6 +12,7 @@ class OpCode:
     MESSAGE = 0x6
     USER_EXIT = 0x7
     HEART_BEAT = 0x8
+    WHISPER = 0x9
 
     ERR_UNKNOWN = 0x10
     ERR_ILLEGAL_OP = 0x11
