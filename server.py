@@ -191,6 +191,13 @@ def message(payload, client):
 
 def whisper(payload, client):
     print(payload)
+    if payload['sender'] == payload['target']:
+        message = {
+            'op': OpCode.ERR_ILLEGAL_WISP,
+            'user': payload['sender'],
+        }
+        broadcast(client,message)
+
     message = {
         'op': OpCode.WHISPER,
         'sender': client.username,
