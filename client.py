@@ -303,6 +303,9 @@ class App(urwid.Pile):
         except KeyError:
             self.printfn(f'UNKNOWN OPCODE {op:#x}')
             self.printfn(json.dumps(response))
+        
+        if self.debug:
+            self.printfn(f'RECEIVING: {json.dumps(response)}')
 
         if respond_fn:
             respond_fn(response)
