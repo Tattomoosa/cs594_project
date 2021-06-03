@@ -1,6 +1,8 @@
 #! /usr/bin/env python
 
+import os
 import socket
+import select
 from time import sleep
 from datetime import datetime
 import sys
@@ -8,10 +10,13 @@ import json
 import urwid
 from threading import Thread
 
+from urwid.main_loop import ExitMainLoop
+
 from opcodes import OpCode
 
 WELCOME_MSG = "Welcome to IRC!"
-TIMEOUT_TIME = 5
+TIMEOUT_TIME = 1.0
+socket.setdefaulttimeout(TIMEOUT_TIME)
 
 USAGE = '''
 Usage: {sys.argv[0]} [address]
@@ -29,6 +34,7 @@ try:
 except:
     print(USAGE)
 
+exit_msg = 'Exited'
 # temp
 UUID = 0
 RID = 0
@@ -52,17 +58,27 @@ Commands are prefixed with '/', which must be the first character of the input t
 
 # runs on another thread
 def listen_on_socket(sockt, responsefn):
+    # make sure app has chance to start main loop
+    sleep(0.1)
+    sockt.settimeout(TIMEOUT_TIME)
     try:
-        # make sure app has chance to start main loop
-        sleep(0.1)
-        sockt.settimeout(TIMEOUT_TIME)
-        while data := sockt.recv(1024):
-            data = json.loads(data.decode())
-            if data['op'] == OpCode.HEART_BEAT:
-                continue
-            responsefn(data)
-    except TimeoutError:
-        responsefn({ "op": OpCode.ERR_TIMEOUT })
+        while True:
+            read_s, _, _ = select.select([sockt], [sockt], [], TIMEOUT_TIME)
+
+            if len(read_s):
+                data = sockt.recv(1024)
+                if not len(data):
+                    responsefn({ 'op': OpCode.ERR_TIMEOUT })
+                    return
+                data = json.loads(data.decode())
+                if data['op'] == OpCode.HEART_BEAT:
+                    continue
+                responsefn(data)
+    # signal works just fine in a thread, but yells at us that it can't be in the
+    # main thread and throws a ValueError only when the server disconnects.
+    # TODO better way??
+    except (ValueError, TimeoutError):
+        responsefn({ 'op': OpCode.ERR_TIMEOUT })
         return
 
 
@@ -108,6 +124,8 @@ class App(urwid.Pile):
                 print('Enter Username: ', end='')
                 username = input()
                 login_data = login(username)
+                # TODO this clears any hearbeats -- we can DO BETTER somehow ??
+                _ = sockt.recv(1024)
                 sockt.sendall(json.dumps(login_data[0]).encode()) # # login username
                 while resp := sockt.recv(1024).decode():
                     resp = json.loads(resp)
@@ -130,6 +148,9 @@ class App(urwid.Pile):
 
                     user = User(resp['username'], sockt)
                     return user
+            except TimeoutError as e:
+                print('Connection timed out.')
+                exit()
             except Exception as e:
                 raise e
 
@@ -171,6 +192,8 @@ class App(urwid.Pile):
         self.edit_box = urwid.LineBox(urwid.Filler(self.edit_widget))
         super(App, self).__init__([self.text_widget, (3, self.edit_box)], 1)
         self.loop = urwid.MainLoop(self)
+        # write to this pipe to quit the application
+        self.quit_pipe = self.loop.watch_pipe(self.exit_app)
 
         # setup socket listener
         self.user = user
@@ -281,10 +304,7 @@ class App(urwid.Pile):
             self.printfn(f'''User '{response["user"]}' has logged off''')
         
         elif op == OpCode.ERR_TIMEOUT:
-            import os
-            self.loop.stop()
-            print('Server timed out')
-            os._exit(1)
+            os.write(self.quit_pipe, 'Server timed out'.encode())
         
         elif op == OpCode.LEAVE_ROOM:
             room_name = response["room"]
@@ -319,7 +339,15 @@ class App(urwid.Pile):
             self.printfn(json.dumps(response))
         
 
+    # ==========================================================================
+    # RESPONSE operations
+    # ==========================================================================
+
+    # TODO
+
+    # ==========================================================================
     # COMMANDS operations
+    # ==========================================================================
 
     def login(self, name=''):
         payload = { 
@@ -329,9 +357,7 @@ class App(urwid.Pile):
         return (payload, f'Attempting to log in as {name}...')
 
     def list_rooms(self, _=''):
-        payload = {
-            'op': OpCode.LIST_ROOMS,
-            }
+        payload = { 'op': OpCode.LIST_ROOMS, }
         return (payload, None)
 
     def list_users(self, room=''):
@@ -349,7 +375,6 @@ class App(urwid.Pile):
             'op': OpCode.JOIN_ROOM,
             'user': self.user.username,
             'room': room,
-            # 'new':1,
             }
         return (payload, None)
         
@@ -371,11 +396,12 @@ class App(urwid.Pile):
             }
         return (payload, None)
 
-    # TODO doesn't work
     def exit_app(self, msg=''):
-        import os
-        self.loop.stop()
-        os._exit(0)
+        global exit_msg
+        if type(msg) == bytes:
+            msg = msg.decode()
+        exit_msg = msg
+        raise urwid.ExitMainLoop()
 
     def help_cmd(self, _=''):
         return (None, HELP_MSG)
@@ -384,7 +410,8 @@ class App(urwid.Pile):
 def run_client():
     app = App()
     app.loop.run()
-    return
+    print(exit_msg)
+    os._exit(0)
 
 
 if __name__ == '__main__':
