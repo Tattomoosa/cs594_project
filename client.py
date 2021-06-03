@@ -539,7 +539,7 @@ class App(urwid.Pile):
             return (None, None)
         payload = { 
             'op': OpCode.WHISPER,
-            'user': self.user.username,
+            'sender': self.user.username,
             'target': target,
             'room': f"{self.user.username}.{target}",
             'msg': msg,
