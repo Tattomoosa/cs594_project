@@ -280,6 +280,9 @@ class App(urwid.Pile):
         raise ValueError(f"No room named '{room_name}'\nRooms: {[r.name for r in self.rooms]}")
     
     def handle_server_response(self, response):
+        '''
+        Responds to a server message, see RESPONSEs
+        '''
         try:
             op = response['op']
         except:
@@ -299,6 +302,9 @@ class App(urwid.Pile):
     # ==========================================================================
 
     def rsp_message(self, response):
+        '''
+        RESPONSE command executed when message received
+        '''
         message = f'{response["user"]}: {response["MESSAGE"]}'
         if self.current_room.name == response['room']:
             self.printfn(message)
@@ -307,17 +313,29 @@ class App(urwid.Pile):
                 self.printfn(message, room)
     
     def rsp_login(self, response):
+        '''
+        RESPONSE command executed when notified that user logged in
+        '''
         self.printfn(f'User {response["username"]} has logged in.')
     
     def rsp_list_users(self, response):
+        '''
+        RESPONSE command executed when notified that user listed users
+        '''
         self.printfn(f'USERS')
         self.printfn(','.join(response['users']))
     
     def rsp_list_rooms(self, response):
+        '''
+        RESPONSE command executed when notified that user listed rooms
+        '''
         self.printfn(f'ROOMS')
         self.printfn(','.join(response['rooms']))
     
     def rsp_join_room(self, response):
+        '''
+        RESPONSE command executed when notified that user joined room
+        '''
         if response["user"] == self.user.username:
             room_name = response['room']
             if room_name not in self.rooms:
@@ -328,6 +346,9 @@ class App(urwid.Pile):
             self.printfn(f'{response["user"]} has joined {response["room"]}')
 
     def rsp_whisper(self, response):
+        '''
+        RESPONSE command executed when notified that user sent or received whisper
+        '''
         self.printfn("WHISPER SENT")
         room = response["room"]
         if room == self.current_room:
@@ -345,9 +366,15 @@ class App(urwid.Pile):
             self.printfn(message, room)
     
     def rsp_user_exit(self, response):
+        '''
+        RESPONSE command executed when notified that a user exited
+        '''
         self.printfn(f'''User '{response["user"]}' has logged off''')
     
     def rsp_leave_room(self, response):
+        '''
+        RESPONSE command executed when notified that a user exited
+        '''
         room_name = response["room"]
         if room_name == 'default':
             self.printfn("Leaving room 'default' is not allowed")
@@ -357,24 +384,45 @@ class App(urwid.Pile):
         self.rooms.remove(room)
     
     def rsp_err_timeout(self, response):
+        '''
+        RESPONSE command executed when notified that server timed out
+        '''
         os.write(self.quit_pipe, 'Server timed out'.encode())
     
     def rsp_err_illegal_op(self, response):
+        '''
+        RESPONSE command executed when notified that user requested illegal operation
+        '''
         self.printfn('SERVER ERROR: Illegal Operation')
 
     def rsp_err_name_exists(self, response):
+        '''
+        RESPONSE command executed when notified that user requested a username that doesn't exist
+        '''
         self.printfn('SERVER ERROR: Name exists')
 
     def rsp_err_illegal_name(self, response):
+        '''
+        RESPONSE command executed when notified that user requested a username that is illegal
+        '''
         self.printfn('SERVER ERROR: Illegal Name')
 
     def rsp_err_illegal_msg(self, response):
+        '''
+        RESPONSE command executed when notified that user tried to send a message that is illegal
+        '''
         self.printfn('SERVER ERROR: Illegal Message')
 
     def rsp_err_malformed(self, response):
+        '''
+        RESPONSE command executed a response from the server is malformed
+        '''
         self.printfn('SERVER ERROR: Received malformed request')
 
     def rsp_err(self, response):
+        '''
+        RESPONSE generic error (currently unused)
+        '''
         self.printfn(json.loads(response))
 
 
@@ -384,6 +432,9 @@ class App(urwid.Pile):
     # ==========================================================================
 
     def cmd_login(self, name=''):
+        '''
+        COMMAND request to login as name
+        '''
         payload = { 
             'op': OpCode.LOGIN,
             'username':name,
@@ -391,10 +442,16 @@ class App(urwid.Pile):
         return (payload, f'Attempting to log in as {name}...')
 
     def cmd_list_rooms(self, _=''):
+        '''
+        COMMAND request to list rooms
+        '''
         payload = { 'op': OpCode.LIST_ROOMS, }
         return (payload, None)
 
     def cmd_list_users(self, room=''):
+        '''
+        COMMAND request to list users
+        '''
         payload = { 
             'op': OpCode.LIST_USERS,
             'room': room,
@@ -402,6 +459,9 @@ class App(urwid.Pile):
         return (payload, None)
 
     def cmd_join_room(self, room=''):
+        '''
+        COMMAND request to join room
+        '''
         if room in [r.name for r in self.rooms]:
             self.switch_current_room(room)
             return (None, f'Switched to room {room}')
@@ -413,6 +473,9 @@ class App(urwid.Pile):
         return (payload, None)
         
     def cmd_leave_room(self, room=''):
+        '''
+        COMMAND request to leave room
+        '''
         payload = { 
             'op': OpCode.LEAVE_ROOM,
             'room': room
@@ -420,6 +483,9 @@ class App(urwid.Pile):
         return (payload, None)
         
     def cmd_message(self, msg=''):
+        '''
+        COMMAND request to send message
+        '''
         if msg == '':
             return (None, None)
         payload = { 
@@ -431,6 +497,9 @@ class App(urwid.Pile):
         return (payload, None)
 
     def cmd_whisper(self, msg=''):
+        '''
+        COMMAND request to send whisper
+        '''
         if msg == '':
             return (None, None)
         target, msg = msg.split(" ", 1) 
@@ -445,6 +514,9 @@ class App(urwid.Pile):
 
     # TODO doesn't work
     def cmd_exit_app(self, msg=''):
+        '''
+        Exits app
+        '''
         global exit_msg
         if type(msg) == bytes:
             msg = msg.decode()
@@ -452,6 +524,9 @@ class App(urwid.Pile):
         raise urwid.ExitMainLoop()
 
     def cmd_help_cmd(self, _=''):
+        '''
+        Prints help command
+        '''
         return (None, HELP_MSG)
 
 
