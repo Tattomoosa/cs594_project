@@ -328,6 +328,7 @@ class App(urwid.Pile):
             self.printfn(f'{response["user"]} has joined {response["room"]}')
 
     def rsp_whisper(self, response):
+        self.printfn("WHISPER SENT")
         room = response["room"]
         if room == self.current_room:
             message = f'{response["user"]}: {response["MESSAGE"]}'
@@ -339,11 +340,10 @@ class App(urwid.Pile):
                 message = f'response["sender"] whispered you'
             self.printfn(message)
         if room := self.get_room_by_name(response['room']):
-            room.messages.append(urwid.Text(message))
+            self.printfn(message, room)
         else:
             self.rooms.append(Room(room, []))
-            room.messages.append(urwid.Text(message))
-        return
+            self.printfn(message, room)
     
     def rsp_user_exit(self, response):
         self.printfn(f'''User '{response["user"]}' has logged off''')
@@ -352,7 +352,6 @@ class App(urwid.Pile):
         room_name = response["room"]
         if room_name == 'default':
             self.printfn("Leaving room 'default' is not allowed")
-            return
         room = self.get_room_by_name(room_name)
         if room == self.current_room:
             self.switch_current_room('default')
@@ -426,7 +425,7 @@ class App(urwid.Pile):
             return (None, None)
         payload = { 
             'op': OpCode.MESSAGE,
-            'user': UUID,
+            'user': self.user.username,
             'room': self.current_room.name,
             'msg': msg,
             }
@@ -435,12 +434,12 @@ class App(urwid.Pile):
     def cmd_whisper(self, msg=''):
         if msg == '':
             return (None, None)
-        target = msg.split()[0] 
+        target, msg = msg.split(" ", 1) 
         payload = { 
             'op': OpCode.WHISPER,
-            'user': UUID,
+            'user': self.user.username,
             'target': target,
-            'room': f"{UUID}.{target}",
+            'room': f"{self.user.username}.{target}",
             'msg': msg,
             }
         return (payload, None)
