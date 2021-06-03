@@ -350,20 +350,18 @@ class App(urwid.Pile):
         RESPONSE command executed when notified that user sent or received whisper
         '''
         self.printfn("WHISPER SENT")
-        room = response["room"]
-        if room == self.current_room:
+        room_name = response["room"]
+        if room_name == self.current_room.name:
             message = f'{response["user"]}: {response["MESSAGE"]}'
-            self.printfn(message)
         else:
             if response['sender'] == self.user.username:
                 message = f'You whispered {response["target"]}'
             else:
                 message = f'{response["sender"]} whispered you'
-        if room := self.get_room_by_name(response['room']):
-            self.printfn(message, room)
-        else:
-            self.rooms.append(Room(room, []))
-            self.printfn(message, room)
+
+        if room_name not in self.rooms:
+            self.rooms.append(Room(room_name, []))
+        self.printfn(message, room)
     
     def rsp_user_exit(self, response):
         '''
