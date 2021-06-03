@@ -371,14 +371,16 @@ class App(urwid.Pile):
         '''
         self.printfn("WHISPER SENT")
         room_name = response["room"]
-        if room_name == self.current_room.name:
-            message = f'{response["user"]}: {response["MESSAGE"]}'
-        else:
+        # notification of message if not in room
+        if room_name != self.current_room.name:
             if response['sender'] == self.user.username:
                 message = f'You whispered {response["target"]}'
             else:
                 message = f'{response["sender"]} whispered you'
-
+            self.printfn(message)
+        
+        # send message to room
+        message = f'{response["sender"]}: {response["MESSAGE"]}'
         if room_name not in [r.name for r in self.rooms]:
             self.rooms.append(Room(room_name, []))
         room = self.get_room_by_name(room_name)
