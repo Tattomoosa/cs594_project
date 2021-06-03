@@ -52,10 +52,18 @@ Commands are prefixed with '/', which must be the first character of the input t
 
 # runs on another thread
 def listen_on_socket(sockt, responsefn):
-    # make sure app has chance to start main loop
-    sleep(0.1)
-    while data := sockt.recv(1024):
-        responsefn(json.loads(data.decode()))
+    try:
+        # make sure app has chance to start main loop
+        sleep(0.1)
+        sockt.settimeout(5)
+        while data := sockt.recv(1024):
+            data = json.loads(data.decode())
+            if data.op == OpCode.HEART_BEAT:
+                continue
+            responsefn(data)
+    except TimeoutError:
+        responsefn({ "op": OpCode.ERR_TIMEOUT })
+        return
 
 
 
@@ -132,11 +140,16 @@ class App(urwid.Pile):
             '/debug': self.toggle_debug,
             }
 
+        # self.responses = {
+        #     OpCode.MESSAGE: onmessage,
+
+        # }
+
 
         welcome_messages = [
             urwid.Text(WELCOME_MSG),
             urwid.Text(f"You are logged in as '{user.username}'")
-            ]
+        ]
         self.rooms = [Room('default', welcome_messages)]
         self.current_room = self.rooms[0]
 
@@ -255,6 +268,12 @@ class App(urwid.Pile):
         
         elif op == OpCode.USER_EXIT:
             self.printfn(f'''User '{response["user"]}' has logged off''')
+        
+        elif op == OpCode.ERR_TIMEOUT:
+            import os
+            self.loop.stop()
+            print('Server timed out')
+            os._exit(1)
         
         elif op == OpCode.LEAVE_ROOM:
             room_name = response["room"]
