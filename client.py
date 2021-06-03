@@ -116,9 +116,10 @@ def listen_on_socket(sockt, responsefn):
     # signal works just fine in a thread, but yells at us that it can't be in the
     # main thread and throws a ValueError only when the server disconnects.
     # TODO better way??
-    except (ValueError, TimeoutError):
+    except (ValueError, TimeoutError) as e:
         responsefn({ 'op': OpCode.ERR_TIMEOUT })
-        return
+        raise e
+
 
 
 
@@ -184,7 +185,7 @@ class App(urwid.Pile):
             OpCode.WHISPER: self.rsp_whisper,
             OpCode.USER_EXIT: self.rsp_user_exit,
             OpCode.LEAVE_ROOM: self.rsp_leave_room,
-            OpCode.ERR_TIMEOUT: self.rsp_err_timeout,
+            # OpCode.ERR_TIMEOUT: self.rsp_err_timeout,
             OpCode.ERR_ILLEGAL_OP: self.rsp_err_illegal_op,
             OpCode.ERR_NAME_EXISTS  : self.rsp_err_name_exists,
             OpCode.ERR_ILLEGAL_NAME  : self.rsp_err_illegal_name,
@@ -236,6 +237,9 @@ class App(urwid.Pile):
     
     # prints into chat scroll
     def printfn(self, string, room=None):
+        '''
+        Prints to the client display
+        '''
         if not room:
             room = self.current_room
         new_text = urwid.Text(string)
@@ -247,6 +251,9 @@ class App(urwid.Pile):
         self.loop.draw_screen()
 
     def input_check(self, input):
+        '''
+        Parses input and potentially executes commands
+        '''
 
         if input[0:1] == '/':
             if ' ' in input:
@@ -285,16 +292,23 @@ class App(urwid.Pile):
         '''
         try:
             op = response['op']
-        except:
+        except KeyError:
             self.printfn('ERROR: Malformed response from server:')
             self.printfn(response)
             return
         
+        respond_fn = None
         try:
-            self.responses[op](response)
+            respond_fn = self.responses[op]
         except KeyError:
-            self.printfn(f'UKNOWN OPCODE {op}')
+            self.printfn(f'UNKNOWN OPCODE {op:#x}')
             self.printfn(json.dumps(response))
+
+        if respond_fn:
+            respond_fn(response)
+        else:
+            raise ValueError('Respond fn is None')
+        
         
 
     # ==========================================================================
@@ -338,7 +352,7 @@ class App(urwid.Pile):
         '''
         if response["user"] == self.user.username:
             room_name = response['room']
-            if room_name not in self.rooms:
+            if room_name not in [r.name for r in self.rooms]:
                 self.rooms.append(Room(room_name, []))
             self.switch_current_room(room_name)
             self.printfn(f'Joined room "{response["room"]}"')
