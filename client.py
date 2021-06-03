@@ -337,8 +337,7 @@ class App(urwid.Pile):
             if response['sender'] == self.user.username:
                 message = f'You whispered {response["target"]}'
             else:
-                message = f'response["sender"] whispered you'
-            self.printfn(message)
+                message = f'{response["sender"]} whispered you'
         if room := self.get_room_by_name(response['room']):
             self.printfn(message, room)
         else:
