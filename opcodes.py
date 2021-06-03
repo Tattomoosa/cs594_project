@@ -4,6 +4,7 @@ from dataclasses import dataclass
 class OpCode:
 
     ERR = 'ERR'
+    HEART_BEAT = 'HEART_BEAT'
     LOGIN = 'LOGIN'
     LIST_ROOMS = 'LIST_ROOMS'
     LIST_USERS = 'LIST_USERS'
