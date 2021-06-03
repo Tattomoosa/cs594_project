@@ -199,22 +199,30 @@ def whisper(payload, client):
         broadcast(client,message)
         return
 
-    if payload['room'] not in client.rooms:
-        client.rooms += [payload['room']]
+    sender = payload['sender']
+    target = payload['target']
+    room_name = f"{sender}.{target}"
+    room_name_swapped = f"{target}.{sender}"
+    print(room_name, room_name_swapped)
+    if room_name_swapped in client.rooms:
+        room_name = room_name_swapped
+
+    if room_name not in client.rooms:
+        client.rooms += [room_name]
 
     message = {
         'op': OpCode.WHISPER,
         'sender': client.username,
         'target':  payload['target'],
-        'room': f"{client.username}.{payload['target']}",
+        'room': room_name,
         'MESSAGE': payload['msg'],
     }
     broadcast(client, message)
     matching = [c for c in client_list if c.username == payload['target']]
     if len(matching) > 0:
         reciever = matching[0]
-        if payload['room'] not in reciever.rooms:
-            reciever.rooms += [payload['room']]
+        if room_name not in reciever.rooms:
+            reciever.rooms += [room_name]
         broadcast( reciever,message)
 
     return

@@ -189,7 +189,7 @@ class App(urwid.Pile):
             OpCode.WHISPER: self.rsp_whisper,
             OpCode.USER_EXIT: self.rsp_user_exit,
             OpCode.LEAVE_ROOM: self.rsp_leave_room,
-            # OpCode.ERR_TIMEOUT: self.rsp_err_timeout,
+            OpCode.ERR_TIMEOUT: self.rsp_err_timeout,
             OpCode.ERR_ILLEGAL_OP: self.rsp_err_illegal_op,
             OpCode.ERR_NAME_EXISTS  : self.rsp_err_name_exists,
             OpCode.ERR_ILLEGAL_NAME  : self.rsp_err_illegal_name,
@@ -197,7 +197,6 @@ class App(urwid.Pile):
             OpCode.ERR_MALFORMED  : self.rsp_err_malformed,
             OpCode.ERR  : self.rsp_err,
         }
-
 
         welcome_messages = [
             urwid.Text(WELCOME_MSG),
@@ -536,14 +535,15 @@ class App(urwid.Pile):
         except:
             self.printfn('ERROR: Expected "/whisper [user] [message]"')
             return (None, None)
+
         if target == self.user.username:
             self.printfn('ERROR: You cannot whisper yourself')
             return (None, None)
+
         payload = { 
             'op': OpCode.WHISPER,
             'sender': self.user.username,
             'target': target,
-            'room': f"{self.user.username}.{target}",
             'msg': msg,
             }
         return (payload, None)
