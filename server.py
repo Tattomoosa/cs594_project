@@ -197,6 +197,7 @@ def whisper(payload, client):
             'user': payload['sender'],
         }
         broadcast(client,message)
+        return
 
     message = {
         'op': OpCode.WHISPER,
