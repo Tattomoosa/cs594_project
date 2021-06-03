@@ -19,11 +19,11 @@ else
     tmux split-window -h
 
     tmux select-pane -T 'client'
-    tmux send-keys -t 1 "./client.py $PORT" C-m
+    tmux send-keys -t 1 "python3 ./client.py $PORT" C-m
     tmux split-window -h
 
     tmux select-pane -T 'client2'
-    tmux send-keys -t 2 "./client.py $PORT" C-m
+    tmux send-keys -t 2 "python3 ./client.py $PORT" C-m
 
     tmux a -t $SESSION_NAME
 fi

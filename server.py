@@ -1,5 +1,6 @@
 #! /usr/bin/env python3
 
+from json.decoder import JSONDecodeError
 import socket
 import socketserver
 import signal
@@ -64,10 +65,10 @@ class IrcRequestHandler(socketserver.BaseRequestHandler):
         client_list.append(self.client)
         # listen loop
         while data := self.request.recv(1024):
-            data = json.loads(data.strip().decode())
             try:
+                data = json.loads(data.strip().decode())
                 COMMANDS[data['op']](data, self.client)
-            except:
+            except JSONDecodeError:
                 print('ILLEGAL OPERATION:')
                 print(data)
                 message = {
@@ -189,6 +190,7 @@ def message(payload, client):
     return
 
 def whisper(payload, client):
+    print(payload)
     message = {
         'op': OpCode.WHISPER,
         'sender': client.username,
@@ -196,7 +198,11 @@ def whisper(payload, client):
         'room': f"{client.username}.{payload['target']}",
         'MESSAGE': payload['msg'],
     }
-    broadcast_room(message, message['room'])
+    broadcast(client, message)
+    matching = [c for c in client_list if c.username == payload['target']]
+    if len(matching) > 0:
+        reciever = matching[0]
+        broadcast( reciever,message)
     return
 
 def exit_app(payload, client):
@@ -233,5 +239,4 @@ if __name__ == '__main__':
         server.allow_reuse_address = True
         thread = Thread(target=heart_beat, name='thread-1')
         thread.start()
-
         server.serve_forever()
