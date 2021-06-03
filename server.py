@@ -20,6 +20,9 @@ SERVER_ADDRESS = 'localhost', PORT
 client_list = []
 
 class Client():
+    '''
+    Represents a single connection to a client
+    '''
 
     def __init__(self, socket):
         self.socket = socket
@@ -28,23 +31,33 @@ class Client():
         self.rooms = ['default']
 
 
-# Sends message to all clients
 def broadcast_all(message):
+    '''
+    calls broadcast on all clients in client_list
+    '''
     for client in client_list:
         broadcast(client, message)
 
-# Sends message to passed in client
-def broadcast(client, message):
-    message = json.dumps(message).encode()
-    client.socket.sendall(message)
-
-# sends message to room
 def broadcast_room(message, room):
+    '''
+    Calls broadcast on all clients in a room
+    '''
     for client in client_list:
         if room in client.rooms:
             broadcast(client, message)
 
+def broadcast(client, message):
+    '''
+    Sends an encoded JSON message to specified client
+    '''
+    message = json.dumps(message).encode()
+    client.socket.sendall(message)
+
+
 def heart_beat():
+    '''
+    Sends a heart_beat message to all connected clients every second
+    '''
     while True:
         sleep(1)
         print("Bump bump")
@@ -79,10 +92,16 @@ class IrcRequestHandler(socketserver.BaseRequestHandler):
 
     # called whenwhen client disconnects
     def finish(self):
+        '''
+        cleans up when client disconnects
+        '''
         exit_app({},self.client)
         client_list.remove(self.client)
     
 def login(payload, client):
+    '''
+    Handles clients login by checking for acceptable name and sends back a message
+    '''
 
     print(f"Logging in User {payload['username']}")
     # if payload['username'] in client_list.username:
@@ -118,6 +137,9 @@ def login(payload, client):
     return
 
 def list_rooms(payload, client):
+    '''
+    List all rooms unless containing a . if so it checks if username contained within.
+    '''
     rooms = []
     for c in client_list:
         for room in c.rooms:
@@ -138,6 +160,9 @@ def list_rooms(payload, client):
     return
 
 def list_users(payload, client):
+    '''
+    lists all users. can be used in specified room
+    '''
     users = []
     print(payload)
     if payload['room'] == '':
@@ -157,6 +182,9 @@ def list_users(payload, client):
     return
 
 def join_room(payload, client):
+    '''
+    Adds room to clients list of rooms
+    '''
     print(f'{payload["user"]} joined room {payload["room"]}')
     newroom = False
     if payload['room'] not in client.rooms:
@@ -175,6 +203,9 @@ def join_room(payload, client):
     return
 
 def leave_room(payload, client):
+    '''
+    Removes room from list of rooms.
+    '''
     print(f'{payload["user"]} left room {payload["room"]}')
     client.rooms.remove(payload['room'])
     message = {
@@ -185,6 +216,9 @@ def leave_room(payload, client):
     return
 
 def message(payload, client):
+    '''
+    Broadcast message to room.
+    '''
     message = {
         'op': OpCode.MESSAGE,
         'user': client.username,
@@ -195,6 +229,12 @@ def message(payload, client):
     return
 
 def whisper(payload, client):
+    '''
+    Makes sure user doesn't whisper self.
+    adds room to users list.
+    adds room to targets list.
+    sends message to room.
+    '''
     print(payload)
     if payload['sender'] == payload['target']:
         message = {
@@ -233,6 +273,9 @@ def whisper(payload, client):
     return
 
 def exit_app(payload, client):
+    '''
+    sends exit opcode
+    '''
     message = {
         'op': OpCode.USER_EXIT,
         'user': client.username,
@@ -241,6 +284,9 @@ def exit_app(payload, client):
     return
 
 def help_cmd(payload, client):
+    '''
+    return help opcode
+    '''
     print('User requested help')
     message = {
         'op': OpCode.LOGIN,
