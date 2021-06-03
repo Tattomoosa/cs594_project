@@ -1,6 +1,7 @@
 #! /usr/bin/env python
 
 import os
+from server import whisper
 import socket
 import select
 from time import sleep
@@ -110,9 +111,9 @@ class App(urwid.Pile):
         separately.
         '''
         # attempt to connect to server socket
+        sockt = socket.socket(socket.AF_INET)
+        sockt.settimeout(.5)
         try:
-            sockt = socket.socket(socket.AF_INET)
-            sockt.settimeout(TIMEOUT_TIME)
             sockt.connect(SERVER_ADDRESS)
         except ConnectionRefusedError:
             print('Error connecting to server')
@@ -300,6 +301,24 @@ class App(urwid.Pile):
             else:
                 self.printfn(f'{response["user"]} has joined {response["room"]}')
         
+        elif op == OpCode.WHISPER:
+            room = response["room"]
+            if room == self.current_room:
+                message = f'{response["user"]}: {response["MESSAGE"]}'
+                self.printfn(message)
+            else:
+                if response['sender'] == self.user.username:
+                    message = f'You whispered {response["target"]}'
+                else:
+                    message = f'response["sender"] whispered you'
+                self.prinfn(message)
+            if room := self.get_room_by_name(response['room']):
+                room.messages.append(urwid.Text(message))
+            else:
+                self.rooms.append(Room(room, []))
+                room.messages.append(urwid.Text(message))
+            return
+        
         elif op == OpCode.USER_EXIT:
             self.printfn(f'''User '{response["user"]}' has logged off''')
         
@@ -396,6 +415,20 @@ class App(urwid.Pile):
             }
         return (payload, None)
 
+    def whisper(self, msg=''):
+        if msg == '':
+            return (None, None)
+        target = msg.split()[0] 
+        payload = { 
+            'op': OpCode.MESSAGE,
+            'user': UUID,
+            'target': target,
+            'room': f"{UUID}.{target}",
+            'msg': msg,
+            }
+        return (payload, None)
+
+    # TODO doesn't work
     def exit_app(self, msg=''):
         global exit_msg
         if type(msg) == bytes:
