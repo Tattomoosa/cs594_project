@@ -207,9 +207,16 @@ def leave_room(payload, client):
     Removes room from list of rooms.
     '''
     print(f'{payload["user"]} left room {payload["room"]}')
+    if payload['room'] not in client.rooms:
+        message = {
+            'op': OpCode.ERR_NOT_IN_ROOM,
+        }
+        broadcast(client,message)
+        return
     client.rooms.remove(payload['room'])
     message = {
         'op': OpCode.LEAVE_ROOM,
+        'user': payload['user'],
         'room': payload['room']
     }
     broadcast_room(message, payload['room'])

@@ -23,3 +23,4 @@ class OpCode:
     ERR_MALFORMED = 0x10
     ERR_TIMEOUT = 0x11
     ERR_ILLEGAL_WISP = 0x12
+    ERR_NOT_IN_ROOM = 0x13

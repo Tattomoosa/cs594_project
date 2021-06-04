@@ -220,11 +220,12 @@ class App(urwid.Pile):
             OpCode.LEAVE_ROOM: self.rsp_leave_room,
             OpCode.ERR_TIMEOUT: self.rsp_err_timeout,
             OpCode.ERR_ILLEGAL_OP: self.rsp_err_illegal_op,
-            OpCode.ERR_NAME_EXISTS  : self.rsp_err_name_exists,
-            OpCode.ERR_ILLEGAL_NAME  : self.rsp_err_illegal_name,
-            OpCode.ERR_ILLEGAL_MSG  : self.rsp_err_illegal_msg,
-            OpCode.ERR_MALFORMED  : self.rsp_err_malformed,
-            OpCode.ERR  : self.rsp_err,
+            OpCode.ERR_NAME_EXISTS: self.rsp_err_name_exists,
+            OpCode.ERR_ILLEGAL_NAME: self.rsp_err_illegal_name,
+            OpCode.ERR_ILLEGAL_MSG: self.rsp_err_illegal_msg,
+            OpCode.ERR_MALFORMED: self.rsp_err_malformed,
+            OpCode.ERR_NOT_IN_ROOM: self.rsp_err_not_in_room,
+            OpCode.ERR: self.rsp_err,
         }
 
         welcome_messages = [
@@ -366,7 +367,7 @@ class App(urwid.Pile):
         '''
         RESPONSE command executed when message received
         '''
-        message = f'{response["user"]}: {response["MESSAGE"]}'
+        message = f'{response["user"]}: {response["message"]}'
         if self.current_room.name == response['room']:
             self.printfn(message)
         else:
@@ -421,7 +422,7 @@ class App(urwid.Pile):
             self.printfn(message)
         
         # send message to room
-        message = f'{response["sender"]}: {response["MESSAGE"]}'
+        message = f'{response["sender"]}: {response["message"]}'
         if room_name not in [r.name for r in self.rooms]:
             self.rooms.append(Room(room_name, []))
         room = self.get_room_by_name(room_name)
@@ -438,12 +439,15 @@ class App(urwid.Pile):
         RESPONSE command executed when notified that a user exited
         '''
         room_name = response["room"]
-        if room_name == 'default':
-            self.printfn("Leaving room 'default' is not allowed")
         room = self.get_room_by_name(room_name)
-        if room == self.current_room:
-            self.switch_current_room_by_name('default')
-        self.rooms.remove(room)
+        if response["user"] == self.user.username:
+            self.rooms.remove(room)
+            if room == self.current_room:
+                self.printfn("LEAVING CURRENT ROOM")
+                self.switch_current_room_by_name('default')
+            self.printfn(f"Left room '{response['room']}'")
+        else:
+            self.printfn(f"User '{response['user']}' has left the room", room)
     
     def rsp_err_timeout(self, response):
         '''
@@ -486,6 +490,12 @@ class App(urwid.Pile):
         RESPONSE command executed when client requested illegal whisper
         '''
         self.printfn('SERVER ERROR: Illegal whisper')
+
+    def rsp_err_not_in_room(self, response):
+        '''
+        RESPONSE command executed when client requested illegal whisper
+        '''
+        self.printfn('SERVER ERROR: Not in room')
 
     def rsp_err(self, response):
         '''
@@ -530,9 +540,12 @@ class App(urwid.Pile):
         '''
         COMMAND request to join room
         '''
+        if not room:
+            return (None, 'ERROR: Expected /join [room]')
         if room in [r.name for r in self.rooms]:
             self.switch_current_room_by_name(room)
-            return (None, f'Switched to room {room}')
+            self.printfn(f'Switched to room {room}')
+            return (None, None)
         payload = { 
             'op': OpCode.JOIN_ROOM,
             'user': self.user.username,
@@ -544,23 +557,30 @@ class App(urwid.Pile):
         '''
         COMMAND request to leave room
         '''
+        if not room:
+            return (None, 'ERROR: Expected "/leave [room]"')
+        if room == 'default':
+            return (None, "ERROR: Leaving room 'default' is not allowed")
+        if room == self.current_room.name:
+            self.switch_current_room_by_name('default')
         payload = { 
             'op': OpCode.LEAVE_ROOM,
-            'room': room
+            'room': room,
+            'user': self.user.username,
             }
         return (payload, None)
         
-    def cmd_message(self, msg=''):
+    def cmd_message(self, message=''):
         '''
         COMMAND request to send message
         '''
-        if msg == '':
+        if message == '':
             return (None, None)
         payload = { 
             'op': OpCode.MESSAGE,
             'user': self.user.username,
             'room': self.current_room.name,
-            'msg': msg,
+            'message': message,
             }
         return (payload, None)
 
@@ -575,12 +595,10 @@ class App(urwid.Pile):
         try:
             target, msg = msg.split(" ", 1) 
         except:
-            self.printfn('ERROR: Expected "/whisper [user] [message]"')
-            return (None, None)
+            return (None, 'ERROR: Expected "/whisper [user] [message]"')
 
         if target == self.user.username:
-            self.printfn('ERROR: You cannot whisper yourself')
-            return (None, None)
+            return (None, 'ERROR: You cannot whisper yourself')
 
         payload = { 
             'op': OpCode.WHISPER,
