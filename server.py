@@ -212,7 +212,7 @@ def leave_room(payload, client):
         'op': OpCode.LEAVE_ROOM,
         'room': payload['room']
     }
-    broadcast(client, message)
+    broadcast_room(message, payload['room'])
     return
 
 def message(payload, client):
