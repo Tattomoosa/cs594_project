@@ -51,6 +51,7 @@ Commands are prefixed with '/', which must be the first character of the input t
 /login [username] - Login with [username]
 /whisper [username] [message] - send [username] [message] in private room
 /rooms - List rooms
+/currentroom - Prints the name of the current room
 /users [room] - List all users, or users in [room]
 /join [room] - Join room
 /leave [room] - Leave current room, or leave [room]
@@ -204,6 +205,7 @@ class App(urwid.Pile):
             '/quit': self.cmd_exit_app,
             '/help': self.cmd_help_cmd,
             '/debug': self.toggle_debug,
+            '/currentroom': self.cmd_current_room,
             }
 
         # Handles responding to server messages
@@ -543,6 +545,12 @@ class App(urwid.Pile):
             'room': room,
             }
         return (payload, None)
+    
+    def cmd_current_room(self, _=''):
+        '''
+        COMMAND prints curent room 
+        '''
+        return (None, f"Current room is '{self.current_room.name}'")
 
     def cmd_join_room(self, room=''):
         '''
