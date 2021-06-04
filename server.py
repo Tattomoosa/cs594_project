@@ -122,7 +122,7 @@ def login(payload, client):
 
     if len(payload['username']) > 32 or len(payload['username']) < 1:
         message = {
-            'op': OpCode.ERR_ILLEGAL_NAME,
+            'op': OpCode.ERR_ILLEGAL_LEN,
             'user': payload['username']
         }
         broadcast(client, message)
