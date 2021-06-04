@@ -6,25 +6,21 @@ An IRC Chat Client
 
 from json.decoder import JSONDecodeError
 import os
-from server import whisper
 import socket
 import select
 from time import sleep
-from datetime import datetime
 import sys
 import json
 import urwid
 from threading import Thread
 
-from urwid.main_loop import ExitMainLoop
-
 from opcodes import OpCode
 
 WELCOME_MSG = "Welcome to IRC!"
-TIMEOUT_TIME = 1.0
+TIMEOUT_TIME = 5.0
 socket.setdefaulttimeout(TIMEOUT_TIME)
 
-USAGE = '''
+USAGE = f'''
 Usage: {sys.argv[0]} [address]
     address: Server address - can be a port (eg 8000) on localhost, or IP:port (eg 127.0.0.1:8000)
 '''
@@ -584,16 +580,16 @@ class App(urwid.Pile):
             }
         return (payload, None)
 
-    def cmd_whisper(self, msg=''):
+    def cmd_whisper(self, message=''):
         '''
         COMMAND request to send whisper
         '''
-        if msg == '':
+        if message == '':
             return (None, None)
         
         target = None
         try:
-            target, msg = msg.split(" ", 1) 
+            target, message = message.split(" ", 1) 
         except:
             return (None, 'ERROR: Expected "/whisper [user] [message]"')
 
@@ -604,7 +600,7 @@ class App(urwid.Pile):
             'op': OpCode.WHISPER,
             'sender': self.user.username,
             'target': target,
-            'msg': msg,
+            'message': message,
             }
         return (payload, None)
 
