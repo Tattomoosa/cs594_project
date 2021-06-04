@@ -223,7 +223,7 @@ def message(payload, client):
         'op': OpCode.MESSAGE,
         'user': client.username,
         'room': payload['room'],
-        'MESSAGE': payload['msg'],
+        'message': payload['message'],
     }
     broadcast_room(message, payload['room'])
     return
@@ -260,7 +260,7 @@ def whisper(payload, client):
         'sender': client.username,
         'target':  payload['target'],
         'room': room_name,
-        'MESSAGE': payload['msg'],
+        'message': payload['message'],
     }
     broadcast(client, message)
     matching = [c for c in client_list if c.username == payload['target']]
