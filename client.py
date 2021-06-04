@@ -82,9 +82,11 @@ def attempt_login(sockt):
                     
                 # username errors
                 if opcode == OpCode.ERR_NAME_EXISTS:
-                    print('ERROR: Username exists')
+                    print('ERROR: Username already exists')
                 elif opcode == OpCode.ERR_ILLEGAL_NAME:
                     print('ERROR: Username is illegal')
+                elif opcode == OpCode.ERR_ILLEGAL_LEN:
+                    print('ERROR: Username has illegal length')
                 else:
                     print(f'OPCODE: {opcode:#x}')
                     print(f'{resp}')
@@ -214,13 +216,17 @@ class App(urwid.Pile):
             OpCode.WHISPER: self.rsp_whisper,
             OpCode.USER_EXIT: self.rsp_user_exit,
             OpCode.LEAVE_ROOM: self.rsp_leave_room,
+
             OpCode.ERR_TIMEOUT: self.rsp_err_timeout,
+            OpCode.ERR_ILLEGAL_LEN: self.rsp_err_illegal_len,
+            OpCode.ERR_ILLEGAL_WISP: self.rsp_err_illegal_wisp,
             OpCode.ERR_ILLEGAL_OP: self.rsp_err_illegal_op,
             OpCode.ERR_NAME_EXISTS: self.rsp_err_name_exists,
             OpCode.ERR_ILLEGAL_NAME: self.rsp_err_illegal_name,
             OpCode.ERR_ILLEGAL_MSG: self.rsp_err_illegal_msg,
             OpCode.ERR_MALFORMED: self.rsp_err_malformed,
             OpCode.ERR_NOT_IN_ROOM: self.rsp_err_not_in_room,
+
             OpCode.ERR: self.rsp_err,
         }
 
@@ -481,7 +487,7 @@ class App(urwid.Pile):
         '''
         self.printfn('SERVER ERROR: Received malformed request')
 
-    def rsp_err_illegal_whisper(self, response):
+    def rsp_err_illegal_wisp(self, response):
         '''
         RESPONSE command executed when client requested illegal whisper
         '''
@@ -492,6 +498,12 @@ class App(urwid.Pile):
         RESPONSE command executed when client requested illegal whisper
         '''
         self.printfn('SERVER ERROR: Not in room')
+
+    def rsp_err_illegal_len(self, response):
+        '''
+        RESPONSE command executed when client requested username with illegal length
+        '''
+        self.printfn('SERVER ERROR: Illegal username length')
 
     def rsp_err(self, response):
         '''
